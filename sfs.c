@@ -53,9 +53,25 @@ void *sfs_init(struct fuse_conn_info *conn)
     
     log_conn(conn);
     log_fuse_context(fuse_get_context());
-	
-
-    return SFS_DATA;
+    log_msg("about to open disk (testfsfile)\n");
+    disk_open("/ilab/users/sp1088/compsci/cs416/assignment2/testfsfile");
+    
+	char buf[512];
+    char buf2[] = "poop";
+	block_write(0, buf2);
+    int hold = block_read(0, buf);
+    if(hold == 0){
+      block_write(0, buf2);
+    }
+    else if(hold > 0){
+      log_msg("%s\n", buf);
+    }
+    else{
+      log_msg("couldn't read block 0\n");
+    }
+    log_msg("end of init function\n");
+    
+	return SFS_DATA;
 }
 
 /**
@@ -67,6 +83,8 @@ void *sfs_init(struct fuse_conn_info *conn)
  */
 void sfs_destroy(void *userdata)
 {
+    log_msg("about to close disk\n");  
+    disk_close();
     log_msg("\nsfs_destroy(userdata=0x%08x)\n", userdata);
 }
 
@@ -87,7 +105,7 @@ int sfs_getattr(const char *path, struct stat *statbuf)
 	}
 	else{
 		statbuf->st_mode = S_IFDIR | 0777;
-        statbuf->st_nlink = 1;
+    statbuf->st_nlink = 1;
 	} 
     log_msg("\nsfs_getattr(path=\"%s\", statbuf=0x%08x)\n",
 	  path, statbuf);
