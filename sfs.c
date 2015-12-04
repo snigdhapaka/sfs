@@ -82,7 +82,7 @@ int sfs_getattr(const char *path, struct stat *statbuf)
     char fpath[PATH_MAX];
     memset(statbuf, 0, sizeof(struct stat));
 	if (strcmp(path, "/") == 0) {
-		statbuf->st_mode = S_IFDIR | 0755;
+		statbuf->st_mode = S_IFDIR | 0777;
 		statbuf->st_nlink = 2;
 	}
 	else{
