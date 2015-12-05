@@ -50,7 +50,7 @@ struct superblock{
 	char sfsname[5];
 	int num_inodes;
 	int num_datablocks;	
-}
+};
 
 struct inode{
 	int type;//1 if directory, 2 if regular file
