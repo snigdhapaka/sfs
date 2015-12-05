@@ -97,22 +97,16 @@ void *sfs_init(struct fuse_conn_info *conn)
     superblock sb;
     char src[]="poop";
     strncpy(sb.sfsname, src, sizeof(src));
-    log_msg("does sb.name print properly: %s\n", sb.sfsname);
     sb.num_inodes = 20;
     sb.num_datablocks = 20;
     sb.total_num_inodes = 20;
     sb.total_num_datablocks = 20;
 
-
-    log_msg("size of struct char: %d   int: %d\n", sizeof(char), sizeof(int));
-    log_msg("size of struct superblock: %d sb: %d\n", sizeof(superblock), sizeof(sb));
-    log_msg("size of struct inode_struct: %d  direntry_struct: %d\n", sizeof(inode), sizeof(direntry));
     block_write(0, &sb);
     block_read(0, buf);
     log_msg("Superblock: \n", buf);
-    log_msg("this should be poop (plus other crap?): %s", buf);
     superblock *psb = (superblock *)buf;
-    log_msg("it works!!  %c, %d, %d, %d, %d\n", psb->sfsname, psb->num_inodes, psb->num_datablocks, psb->total_num_inodes, psb->total_num_datablocks);
+    log_msg("it works!!  %s, %d, %d, %d, %d\n", psb->sfsname, psb->num_inodes, psb->num_datablocks, psb->total_num_inodes, psb->total_num_datablocks);
 
 /*
     log_msg("testing struct inode\n");
