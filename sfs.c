@@ -58,6 +58,8 @@ typedef struct superblock_struct{
   int num_datablocks; 
   int total_num_inodes;
   int total_num_datablocks;
+  char inode_map[8];
+  char data_map[8];
 }superblock;
 
 typedef struct inode_struct{
@@ -107,6 +109,25 @@ void *sfs_init(struct fuse_conn_info *conn)
     log_msg("Superblock: \n", buf);
     superblock *psb = (superblock *)buf;
     log_msg("it works!!  %s, %d, %d, %d, %d\n", psb->sfsname, psb->num_inodes, psb->num_datablocks, psb->total_num_inodes, psb->total_num_datablocks);
+    log_msg("size of block: %d\n", sizeof(buf));
+
+    int i;
+    for(i = 0; i < 5; i++){
+      psb->inode_map[i] = 'a';
+      psb->data_map[i] = 'b';
+    }
+	
+	log_msg("buffer: %s\n", buf);
+    block_write(0, buf);
+    char buf1[512];
+    block_read(0, buf1);
+	superblock *ptr = (superblock *)buf1;
+	log_msg("buffer1: %s\n", buf1);
+    for(i = 0; i < 5; i++){
+      log_msg("%c  %c", ptr->inode_map[i], ptr->data_map[i]);
+    }
+	log_msg("\n");
+    log_msg("above are the char maps\n");
 
 /*
     log_msg("testing struct inode\n");
@@ -115,7 +136,7 @@ void *sfs_init(struct fuse_conn_info *conn)
     test.b2 = 555513;
     block_write(1, &test);
     char buf3[512];
-    block_read(1, buf3);
+    block_read(1, buf3)
     struct inode *try;
     try = (struct inode*) buf3;
     log_msg("it works!!  %d, %d\n", try->b1, try->b2);
