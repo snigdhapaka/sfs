@@ -197,7 +197,6 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     log_msg("\nsfs_create(path=\"%s\", mode=0%03o, fi=0x%08x)\n",
       path, mode, fi);
     
-    
     return retstat;
 }
 
@@ -207,7 +206,6 @@ int sfs_unlink(const char *path)
     int retstat = 0;
     log_msg("sfs_unlink(path=\"%s\")\n", path);
 
-    
     return retstat;
 }
 
