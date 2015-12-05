@@ -29,7 +29,6 @@
 
 #include "log.h"
 
-
 ///////////////////////////////////////////////////////////
 //
 // Prototypes for all these functions, and the C-style comments,
@@ -46,33 +45,40 @@
  * Introduced in version 2.3
  * Changed in version 2.6
  */
+static int sfs_error(char *str)
+{
+    int ret = -errno;
+    log_msg("    ERROR %s: %s\n", str, strerror(errno)); 
+    return ret;
+}
+
 struct superblock{
-	char sfsname[5];
-	int num_inodes;
-	int num_datablocks;	
+  char sfsname[5];
+  int num_inodes;
+  int num_datablocks; 
 };
 
 struct inode{
-	int type;//1 if directory, 2 if regular file
-	int link_count;//how many hardlinks are pointing to it
-	int size;//size of file in bytes
-	int mode;//read or write mode?
-	int b1;
-	int b2;
-	int b3;
-	int b4;
-	int b5;
-	int b6;
-	int b7;
-	int b8;
-	int b9;
-	int b10;
-	int b11;
+  int type;//1 if directory, 2 if regular file
+  int link_count;//how many hardlinks are pointing to it
+  int size;//size of file in bytes
+  int mode;//read or write mode?
+  int b1;
+  int b2;
+  int b3;
+  int b4;
+  int b5;
+  int b6;
+  int b7;
+  int b8;
+  int b9;
+  int b10;
+  int b11;
 };
 
 struct direct_entry{
-	char name[255];
-	int inode_num;
+  char name[255];
+  int inode_num;
 };
 
 void *sfs_init(struct fuse_conn_info *conn)
@@ -85,9 +91,9 @@ void *sfs_init(struct fuse_conn_info *conn)
     log_msg("about to open disk (testfsfile)\n");
     disk_open(SFS_DATA->diskfile);
     
-	char buf[512];
+  	char buf[512];
     char buf2[] = "poop";
-	block_write(0, buf2);
+  	block_write(0, buf2);
     int hold = block_read(0, buf);
     if(hold == 0){
       block_write(0, buf2);
@@ -99,56 +105,21 @@ void *sfs_init(struct fuse_conn_info *conn)
       log_msg("couldn't read block 0\n");
     }
 
-	log_msg("testing struct inode\n");
-	
-	struct inode test;
-	
-	block_write(1, &test);
-	char buf3[512];
-	block_read(1, buf3);
-	struct inode *try;
-	try = (struct inode*) buf3;
-	log_msg("it works!!  %d, %c, %d\n", try->x, try->y, try->z);
+  	log_msg("testing struct inode\n");
+  
+ 	struct inode test;
+    test.b1 = 555512;
+	test.b2 = 555513;
+  	block_write(1, &test);
+  	char buf3[512];
+  	block_read(1, buf3);
+  	struct inode *try;
+  	try = (struct inode*) buf3;
+  	log_msg("it works!!  %d, %d\n", try->b1, try->b2);
 
-	/*
-	struct inode test;
-	test.x = 1;
-	test.y = 'a';
-	test.y = 7;
-	void * x = &test.x;	
-	block_write(0, x);	
-	hold = block_read(0, buf);
-    if(hold == 0){
-      block_write(0, buf2);
-    }
-    else if(hold > 0){
-      log_msg("%s\n", buf);
-    }
-    else{
-      log_msg("couldn't read block 0\n");
-    }	
-	*/
-
-/*
-	log_msg("testing write and read again\n");
-	strcat(buf, "poop is this working?");
-	block_write(0, buf);
-
- 	hold = block_read(0, buf);
-    if(hold == 0){
-      block_write(0, buf2);
-    }
-    else if(hold > 0){
-      log_msg("%s\n", buf);
-    }
-    else{
-      log_msg("couldn't read block 0\n");
-    }
-*/
-
-	log_msg("end of init function\n");
+  log_msg("end of init function\n");
     
-	return SFS_DATA;
+  return SFS_DATA;
 }
 
 /**
@@ -165,6 +136,16 @@ void sfs_destroy(void *userdata)
     log_msg("\nsfs_destroy(userdata=0x%08x)\n", userdata);
 }
 
+static void sfs_fullpath(char fpath[PATH_MAX], const char *path)
+{
+    strcpy(fpath, SFS_DATA->diskfile);
+    strncat(fpath, path, PATH_MAX); // ridiculously long paths will
+            // break here
+
+    log_msg("    sfs_fullpath:  rootdir = \"%s\", path = \"%s\", fpath = \"%s\"\n", 
+		SFS_DATA->diskfile, path, fpath);
+}
+
 /** Get file attributes.
  *
  * Similar to stat().  The 'st_dev' and 'st_blksize' fields are
@@ -175,17 +156,25 @@ int sfs_getattr(const char *path, struct stat *statbuf)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
-    memset(statbuf, 0, sizeof(struct stat));
-	if (strcmp(path, "/") == 0) {
-		statbuf->st_mode = S_IFDIR | 0777;
-		statbuf->st_nlink = 2;
-	}
-	else{
-		statbuf->st_mode = S_IFDIR | 0777;
-    statbuf->st_nlink = 1;
-	} 
-    log_msg("\nsfs_getattr(path=\"%s\", statbuf=0x%08x)\n",
-	  path, statbuf);
+	
+	log_msg("\nsfs_getattr(path=\"%s\", statbuf=0x%08x)\n",
+    path, statbuf);
+	
+    sfs_fullpath(fpath, path);
+	log_msg("\nsfs_getattr(fpath=\"%s\")\n",
+    fpath);
+	log_stat(statbuf);	
+    
+
+	//1)lstat path instead of fpath and see and it works? yes, but mode is 555
+	//2) will setting the mode above change 555 to 777? no, its still 555
+	//3) reset mode to 777 after lstat returns to make it 777? yes!
+	retstat = lstat(path, statbuf);
+	log_stat(statbuf);
+    if (retstat != 0)
+    retstat = sfs_error("sfs_getattr lstat");
+    statbuf->st_mode = S_IFDIR | 0777;
+    log_stat(statbuf);
     
     return retstat;
 }
@@ -206,7 +195,7 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
     int retstat = 0;
     log_msg("\nsfs_create(path=\"%s\", mode=0%03o, fi=0x%08x)\n",
-	    path, mode, fi);
+      path, mode, fi);
     
     
     return retstat;
@@ -236,7 +225,7 @@ int sfs_open(const char *path, struct fuse_file_info *fi)
 {
     int retstat = 0;
     log_msg("\nsfs_open(path\"%s\", fi=0x%08x)\n",
-	    path, fi);
+      path, fi);
 
     
     return retstat;
@@ -260,7 +249,7 @@ int sfs_release(const char *path, struct fuse_file_info *fi)
 {
     int retstat = 0;
     log_msg("\nsfs_release(path=\"%s\", fi=0x%08x)\n",
-	  path, fi);
+    path, fi);
     
 
     return retstat;
@@ -281,7 +270,7 @@ int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
 {
     int retstat = 0;
     log_msg("\nsfs_read(path=\"%s\", buf=0x%08x, size=%d, offset=%lld, fi=0x%08x)\n",
-	    path, buf, size, offset, fi);
+      path, buf, size, offset, fi);
 
    
     return retstat;
@@ -296,11 +285,11 @@ int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
  * Changed in version 2.2
  */
 int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
-	     struct fuse_file_info *fi)
+       struct fuse_file_info *fi)
 {
     int retstat = 0;
     log_msg("\nsfs_write(path=\"%s\", buf=0x%08x, size=%d, offset=%lld, fi=0x%08x)\n",
-	    path, buf, size, offset, fi);
+      path, buf, size, offset, fi);
     
     
     return retstat;
@@ -312,7 +301,7 @@ int sfs_mkdir(const char *path, mode_t mode)
 {
     int retstat = 0;
     log_msg("\nsfs_mkdir(path=\"%s\", mode=0%3o)\n",
-	    path, mode);
+      path, mode);
    
     
     return retstat;
@@ -324,7 +313,7 @@ int sfs_rmdir(const char *path)
 {
     int retstat = 0;
     log_msg("sfs_rmdir(path=\"%s\")\n",
-	    path);
+      path);
     
     
     return retstat;
@@ -342,7 +331,7 @@ int sfs_opendir(const char *path, struct fuse_file_info *fi)
 {
     int retstat = 0;
     log_msg("\nsfs_opendir(path=\"%s\", fi=0x%08x)\n",
-	  path, fi);
+    path, fi);
     
     
     return retstat;
@@ -370,7 +359,7 @@ int sfs_opendir(const char *path, struct fuse_file_info *fi)
  * Introduced in version 2.3
  */
 int sfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset,
-	       struct fuse_file_info *fi)
+         struct fuse_file_info *fi)
 {
     int retstat = 0;
     
@@ -423,12 +412,12 @@ int main(int argc, char *argv[])
     
     // sanity checking on the command line
     if ((argc < 3) || (argv[argc-2][0] == '-') || (argv[argc-1][0] == '-'))
-	sfs_usage();
+  sfs_usage();
 
     sfs_data = malloc(sizeof(struct sfs_state));
     if (sfs_data == NULL) {
-	perror("main calloc");
-	abort();
+  perror("main calloc");
+  abort();
     }
 
     // Pull the diskfile and save it in internal data
