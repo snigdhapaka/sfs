@@ -52,13 +52,15 @@ static int sfs_error(char *str)
     return ret;
 }
 
-struct superblock{
+typedef struct superblock_struct{
   char sfsname[5];
   int num_inodes;
   int num_datablocks; 
-};
+  int total_num_inodes;
+  int total_num_datablocks;
+}superblock;
 
-struct inode{
+typedef struct inode_struct{
   int type;//1 if directory, 2 if regular file
   int link_count;//how many hardlinks are pointing to it
   int size;//size of file in bytes
@@ -74,12 +76,12 @@ struct inode{
   int b9;
   int b10;
   int b11;
-};
+}inode;
 
-struct direct_entry{
+typedef struct direntry_struct{
   char name[255];
   int inode_num;
-};
+}direntry;
 
 void *sfs_init(struct fuse_conn_info *conn)
 {
@@ -91,32 +93,39 @@ void *sfs_init(struct fuse_conn_info *conn)
     log_msg("about to open disk (testfsfile)\n");
     disk_open(SFS_DATA->diskfile);
     
-  	char buf[512];
-    char buf2[] = "poop";
-  	block_write(0, buf2);
-    int hold = block_read(0, buf);
-    if(hold == 0){
-      block_write(0, buf2);
-    }
-    else if(hold > 0){
-      log_msg("%s\n", buf);
-    }
-    else{
-      log_msg("couldn't read block 0\n");
-    }
+    char buf[512];
+    superblock sb;
+    char src[]="poop";
+    strncpy(sb.sfsname, src, sizeof(src));
+    log_msg("does sb.name print properly: %s\n", sb.sfsname);
+    sb.num_inodes = 20;
+    sb.num_datablocks = 20;
+    sb.total_num_inodes = 20;
+    sb.total_num_datablocks = 20;
 
-  	log_msg("testing struct inode\n");
-  
- 	struct inode test;
+
+    log_msg("size of struct char: %d   int: %d\n", sizeof(char), sizeof(int));
+    log_msg("size of struct superblock: %d sb: %d\n", sizeof(superblock), sizeof(sb));
+    log_msg("size of struct inode_struct: %d  direntry_struct: %d\n", sizeof(inode), sizeof(direntry));
+    block_write(0, &sb);
+    block_read(0, buf);
+    log_msg("Superblock: \n", buf);
+    log_msg("this should be poop (plus other crap?): %s", buf);
+    superblock *psb = (superblock *)buf;
+    log_msg("it works!!  %c, %d, %d, %d, %d\n", psb->sfsname, psb->num_inodes, psb->num_datablocks, psb->total_num_inodes, psb->total_num_datablocks);
+
+/*
+    log_msg("testing struct inode\n");
+    struct inode test;
     test.b1 = 555512;
-	test.b2 = 555513;
-  	block_write(1, &test);
-  	char buf3[512];
-  	block_read(1, buf3);
-  	struct inode *try;
-  	try = (struct inode*) buf3;
-  	log_msg("it works!!  %d, %d\n", try->b1, try->b2);
-
+    test.b2 = 555513;
+    block_write(1, &test);
+    char buf3[512];
+    block_read(1, buf3);
+    struct inode *try;
+    try = (struct inode*) buf3;
+    log_msg("it works!!  %d, %d\n", try->b1, try->b2);
+*/
   log_msg("end of init function\n");
     
   return SFS_DATA;
@@ -143,7 +152,7 @@ static void sfs_fullpath(char fpath[PATH_MAX], const char *path)
             // break here
 
     log_msg("    sfs_fullpath:  rootdir = \"%s\", path = \"%s\", fpath = \"%s\"\n", 
-		SFS_DATA->diskfile, path, fpath);
+    SFS_DATA->diskfile, path, fpath);
 }
 
 /** Get file attributes.
@@ -156,21 +165,19 @@ int sfs_getattr(const char *path, struct stat *statbuf)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
-	
-	log_msg("\nsfs_getattr(path=\"%s\", statbuf=0x%08x)\n",
+  
+  log_msg("\nsfs_getattr(path=\"%s\", statbuf=0x%08x)\n",
     path, statbuf);
-	
+  
     sfs_fullpath(fpath, path);
-	log_msg("\nsfs_getattr(fpath=\"%s\")\n",
-    fpath);
-	log_stat(statbuf);	
+  log_msg("\nsfs_getattr(fpath=\"%s\")\n",
+    fpath); 
     
 
-	//1)lstat path instead of fpath and see and it works? yes, but mode is 555
-	//2) will setting the mode above change 555 to 777? no, its still 555
-	//3) reset mode to 777 after lstat returns to make it 777? yes!
-	retstat = lstat(path, statbuf);
-	log_stat(statbuf);
+  //1)lstat path instead of fpath and see and it works? yes, but mode is 555
+  //2) will setting the mode above change 555 to 777? no, its still 555
+  //3) reset mode to 777 after lstat returns to make it 777? yes!
+  retstat = lstat(path, statbuf);
     if (retstat != 0)
     retstat = sfs_error("sfs_getattr lstat");
     statbuf->st_mode = S_IFDIR | 0777;
