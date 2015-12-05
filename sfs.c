@@ -46,6 +46,35 @@
  * Introduced in version 2.3
  * Changed in version 2.6
  */
+struct superblock{
+	char sfsname[5];
+	int num_inodes;
+	int num_datablocks;	
+}
+
+struct inode{
+	int type;//1 if directory, 2 if regular file
+	int link_count;//how many hardlinks are pointing to it
+	int size;//size of file in bytes
+	int mode;//read or write mode?
+	int b1;
+	int b2;
+	int b3;
+	int b4;
+	int b5;
+	int b6;
+	int b7;
+	int b8;
+	int b9;
+	int b10;
+	int b11;
+};
+
+struct direct_entry{
+	char name[255];
+	int inode_num;
+};
+
 void *sfs_init(struct fuse_conn_info *conn)
 {
     fprintf(stderr, "in bb-init\n");
@@ -54,7 +83,7 @@ void *sfs_init(struct fuse_conn_info *conn)
     log_conn(conn);
     log_fuse_context(fuse_get_context());
     log_msg("about to open disk (testfsfile)\n");
-    disk_open("/ilab/users/sp1088/compsci/cs416/assignment2/testfsfile");
+    disk_open(SFS_DATA->diskfile);
     
 	char buf[512];
     char buf2[] = "poop";
@@ -69,7 +98,55 @@ void *sfs_init(struct fuse_conn_info *conn)
     else{
       log_msg("couldn't read block 0\n");
     }
-    log_msg("end of init function\n");
+
+	log_msg("testing struct inode\n");
+	
+	struct inode test;
+	
+	block_write(1, &test);
+	char buf3[512];
+	block_read(1, buf3);
+	struct inode *try;
+	try = (struct inode*) buf3;
+	log_msg("it works!!  %d, %c, %d\n", try->x, try->y, try->z);
+
+	/*
+	struct inode test;
+	test.x = 1;
+	test.y = 'a';
+	test.y = 7;
+	void * x = &test.x;	
+	block_write(0, x);	
+	hold = block_read(0, buf);
+    if(hold == 0){
+      block_write(0, buf2);
+    }
+    else if(hold > 0){
+      log_msg("%s\n", buf);
+    }
+    else{
+      log_msg("couldn't read block 0\n");
+    }	
+	*/
+
+/*
+	log_msg("testing write and read again\n");
+	strcat(buf, "poop is this working?");
+	block_write(0, buf);
+
+ 	hold = block_read(0, buf);
+    if(hold == 0){
+      block_write(0, buf2);
+    }
+    else if(hold > 0){
+      log_msg("%s\n", buf);
+    }
+    else{
+      log_msg("couldn't read block 0\n");
+    }
+*/
+
+	log_msg("end of init function\n");
     
 	return SFS_DATA;
 }
