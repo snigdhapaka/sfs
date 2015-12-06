@@ -16,12 +16,12 @@
 
 void disk_open(const char* diskfile_path)
 {
-    if(diskfile >= 0){
+    if(fd >= 0){
 	return;
     }
     
-    diskfile = open(diskfile_path, O_CREAT|O_RDWR, S_IRUSR|S_IWUSR);
-    if (diskfile < 0) {
+    fd = open(diskfile_path, O_CREAT|O_RDWR, S_IRUSR|S_IWUSR);
+    if (fd < 0) {
 	perror("disk_open failed");
 	exit(EXIT_FAILURE);
     }
@@ -29,8 +29,8 @@ void disk_open(const char* diskfile_path)
 
 void disk_close()
 {
-    if(diskfile >= 0){
-	close(diskfile);
+    if(fd >= 0){
+	close(fd);
     }
 }
 
@@ -59,7 +59,7 @@ int block_read(const int block_num, void *buf)
 int block_write(const int block_num, const void *buf)
 {
     int retstat = 0;
-    retstat = pwrite(diskfile, buf, BLOCK_SIZE, block_num*BLOCK_SIZE);
+    retstat = pwrite(fd, buf, BLOCK_SIZE, block_num*BLOCK_SIZE);
     if (retstat < 0)
 	perror("block_write failed");
     
