@@ -180,22 +180,15 @@ int sfs_getattr(const char *path, struct stat *statbuf)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
-  
-  log_msg("\nsfs_getattr(path=\"%s\", statbuf=0x%08x)\n",
+
+  	log_msg("\nsfs_getattr(path=\"%s\", statbuf=0x%08x)\n",
     path, statbuf);
   
-    sfs_fullpath(fpath, path);
-  log_msg("\nsfs_getattr(fpath=\"%s\")\n",
-    fpath); 
-    
 
-  //1)lstat path instead of fpath and see and it works? yes, but mode is 555
-  //2) will setting the mode above change 555 to 777? no, its still 555
-  //3) reset mode to 777 after lstat returns to make it 777? yes!
-  retstat = lstat(path, statbuf);
+  	retstat = lstat(path, statbuf);
     if (retstat != 0)
     retstat = sfs_error("sfs_getattr lstat");
-    statbuf->st_mode = S_IFDIR | 0777;
+	statbuf->st_mode = S_IFDIR | 0777;
     log_stat(statbuf);
     
     return retstat;
