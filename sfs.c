@@ -1,10 +1,8 @@
 /*
   Simple File System
-
   This code is derived from function prototypes found /usr/include/fuse/fuse.h
   Copyright (C) 2001-2007  Miklos Szeredi <miklos@szeredi.hu>
   His code is licensed under the LGPLv2.
-
 */
 
 #include "params.h"
@@ -45,12 +43,6 @@
  * Introduced in version 2.3
  * Changed in version 2.6
  */
-static int sfs_error(char *str)
-{
-    int ret = -errno;
-    log_msg("    ERROR %s: %s\n", str, strerror(errno)); 
-    return ret;
-}
 
 typedef struct superblock_struct{
   char sfsname[5];
@@ -99,35 +91,25 @@ void *sfs_init(struct fuse_conn_info *conn)
     superblock sb;
     char src[]="poop";
     strncpy(sb.sfsname, src, sizeof(src));
-    sb.num_inodes = 20;
-    sb.num_datablocks = 20;
-    sb.total_num_inodes = 20;
-    sb.total_num_datablocks = 20;
+    sb.num_inodes = 5;
+    sb.num_datablocks = 5;
+    sb.total_num_inodes = 5;
+    sb.total_num_datablocks = 5;
 
     block_write(0, &sb);
     block_read(0, buf);
-    log_msg("Superblock: \n", buf);
     superblock *psb = (superblock *)buf;
-    log_msg("it works!!  %s, %d, %d, %d, %d\n", psb->sfsname, psb->num_inodes, psb->num_datablocks, psb->total_num_inodes, psb->total_num_datablocks);
-    log_msg("size of block: %d\n", sizeof(buf));
 
     int i;
     for(i = 0; i < 5; i++){
       psb->inode_map[i] = 'a';
       psb->data_map[i] = 'b';
     }
-	
-	log_msg("buffer: %s\n", buf);
+  
     block_write(0, buf);
     char buf1[512];
     block_read(0, buf1);
-	superblock *ptr = (superblock *)buf1;
-	log_msg("buffer1: %s\n", buf1);
-    for(i = 0; i < 5; i++){
-      log_msg("%c  %c", ptr->inode_map[i], ptr->data_map[i]);
-    }
-	log_msg("\n");
-    log_msg("above are the char maps\n");
+    superblock *ptr = (superblock *)buf1;
 
 /*
     log_msg("testing struct inode\n");
@@ -160,15 +142,6 @@ void sfs_destroy(void *userdata)
     log_msg("\nsfs_destroy(userdata=0x%08x)\n", userdata);
 }
 
-static void sfs_fullpath(char fpath[PATH_MAX], const char *path)
-{
-    strcpy(fpath, SFS_DATA->diskfile);
-    strncat(fpath, path, PATH_MAX); // ridiculously long paths will
-            // break here
-
-    log_msg("    sfs_fullpath:  rootdir = \"%s\", path = \"%s\", fpath = \"%s\"\n", 
-    SFS_DATA->diskfile, path, fpath);
-}
 
 /** Get file attributes.
  *
@@ -181,14 +154,11 @@ int sfs_getattr(const char *path, struct stat *statbuf)
     int retstat = 0;
     char fpath[PATH_MAX];
 
-  	log_msg("\nsfs_getattr(path=\"%s\", statbuf=0x%08x)\n",
+    log_msg("\nsfs_getattr(path=\"%s\", statbuf=0x%08x)\n",
     path, statbuf);
-  
 
-  	retstat = lstat(path, statbuf);
-    if (retstat != 0)
-    retstat = sfs_error("sfs_getattr lstat");
-	statbuf->st_mode = S_IFDIR | 0777;
+    retstat = lstat(path, statbuf);
+    statbuf->st_mode = S_IFDIR | 0777;
     log_stat(statbuf);
     
     return retstat;
@@ -208,10 +178,39 @@ int sfs_getattr(const char *path, struct stat *statbuf)
  */
 int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
+    log_msg("SNIGGY SAYS THIS IS THE PATH: %s", path);
+    log_fi(fi);
     int retstat = 0;
     log_msg("\nsfs_create(path=\"%s\", mode=0%03o, fi=0x%08x)\n",
-      path, mode, fi);
-    
+        path, mode, fi);
+    //look in direntry first
+    //if not found, look for empty inode struct
+    char buf[512];
+    block_read(0, buf);
+    superblock *ptr = (superblock *)buf;
+    char *offset = (char *)lseek(fd, 40, SEEK_SET);
+    int i;
+    log_msg("Does lseek work?\n");
+    for(i = 0; i < 5; i++){
+      log_msg("%c ", *offset);
+      offset += sizeof(char);
+    }
+    /*if(ptr->num_inodes > 0 && ptr->num_datablocks > 0){
+      int i, j;
+      for(i = 0; i < sizeof(ptr->inode_map); i++){
+        if(ptr->inode_map[i] == 0){
+          for(j = 0; j < sizeof(ptr->data_map); j++){
+            if(ptr->data_map[j] == 0){
+              memset(buf, 0, 512);
+              block_read(1, buf);
+              inodes *inodeptr = (inodes *)buf;
+            }
+          }
+        }
+      }
+    }
+    */
+
     return retstat;
 }
 
