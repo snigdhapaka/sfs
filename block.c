@@ -14,8 +14,6 @@
 
 #include "block.h"
 
-int diskfile = -1;
-
 void disk_open(const char* diskfile_path)
 {
     if(diskfile >= 0){
