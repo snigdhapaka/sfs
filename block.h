@@ -10,7 +10,7 @@
 
 #define BLOCK_SIZE 512
 
-int diskfile = -1;
+int fd = -1;
 
 void disk_open(const char* diskfile_path);
 void disk_close();
