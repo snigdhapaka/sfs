@@ -56,8 +56,8 @@ typedef struct superblock_struct{
   int num_datablocks; 
   int total_num_inodes;
   int total_num_datablocks;
-  char inode_map[8];
-  char data_map[8];
+  char inode_map[100];
+  char data_map[100];
 }superblock;
 
 typedef struct inode_struct{
@@ -78,10 +78,18 @@ typedef struct inode_struct{
   int b11;
 }inode;
 
+typedef struct inode_array_struct{
+  inode i[5];
+}inode_array;
+
 typedef struct direntry_struct{
-  char name[255];
+  char name[120];
   int inode_num;
 }direntry;
+
+typedef struct direntry_array_struct{
+  direntry d[4];
+}direntry_array;
 
 void *sfs_init(struct fuse_conn_info *conn)
 {
@@ -93,14 +101,17 @@ void *sfs_init(struct fuse_conn_info *conn)
     log_msg("about to open disk (testfsfile)\n");
     disk_open(SFS_DATA->diskfile);
     
+    //setting up the superblock struct in block 0 below
     char buf[512];
+    memset(buf, '\0', 512);
     superblock sb;
-    char src[]="poop";
+    memset(sb.sfsname, '\0', sizeof(sb.sfsname));
+    char src[] = "poop";
     strncpy(sb.sfsname, src, sizeof(src));
-    sb.num_inodes = 20;
-    sb.num_datablocks = 20;
-    sb.total_num_inodes = 20;
-    sb.total_num_datablocks = 20;
+    sb.num_inodes = 5;
+    sb.num_datablocks = 5;
+    sb.total_num_inodes = 5;
+    sb.total_num_datablocks = 5;
 
     block_write(0, &sb);
     block_read(0, buf);
@@ -109,6 +120,7 @@ void *sfs_init(struct fuse_conn_info *conn)
     log_msg("it works!!  %s, %d, %d, %d, %d\n", psb->sfsname, psb->num_inodes, psb->num_datablocks, psb->total_num_inodes, psb->total_num_datablocks);
     log_msg("size of block: %d\n", sizeof(buf));
 
+    //filling in the char map (instead of bit map) for inode and data blocks below 
     int i;
     for(i = 0; i < 5; i++){
       psb->inode_map[i] = 'a';
@@ -122,10 +134,73 @@ void *sfs_init(struct fuse_conn_info *conn)
   superblock *ptr = (superblock *)buf1;
   log_msg("buffer1: %s\n", buf1);
     for(i = 0; i < 5; i++){
-      log_msg("%c  %c", ptr->inode_map[i], ptr->data_map[i]);
+      log_msg("%c%c  ", ptr->inode_map[i], ptr->data_map[i]);
     }
   log_msg("\n");
     log_msg("above are the char maps\n");
+
+    memset(buf, 0, 512);
+    //writing in inode array structs in blocks 1 - 20
+    inode_array x;
+    //for(i = 1; i <= 20; i++){
+      //memset(buf, '1', 512);//don't need b/c there won't be chars that need null terminator
+      //block_write(i, buf);
+    int ii;
+    for(i = 1; i <= 20; i++){
+      for(ii = 0; ii < 5; ii++){
+          x.i[ii].type = i;
+          x.i[ii].link_count = i;
+          x.i[ii].size = i;
+          x.i[ii].mode = i;
+          x.i[ii].b1 = i;
+          x.i[ii].b2 = i;
+          x.i[ii].b3 = i;
+          x.i[ii].b4 = i;
+          x.i[ii].b5 = i;
+          x.i[ii].b6 = i;
+          x.i[ii].b7 = i;
+          x.i[ii].b8 = i;
+          x.i[ii].b9 = i;
+          x.i[ii].b10 = i;
+          x.i[ii].b11 = i;
+      }
+      block_write(i, &x);
+    }
+
+    for(i = 1; i <= 20; i++){
+	  memset(buf, '\0', 512);
+      block_read(i, buf);
+      inode_array *xptr = (inode_array *)buf;
+      for(ii = 0; ii < 5; ii++){  
+        log_msg("i: %d   ii: %d\ntype: %d link_count: %d size: %d mode: %d\n\n",i, ii,xptr->i[ii].type, xptr->i[ii].link_count, xptr->i[ii].size, xptr->i[ii].mode);
+      }
+    }
+    
+    //}
+    //read values from inodes in inode_array into log file
+    /*inode_array *xptr;
+    for(i = 1; i <= 20; i++){
+      i = 1;
+      memset(buf, 0, 512);
+      block_read(i, buf);
+      xptr = (inode_array *)buf;
+      int ii;
+      for(ii = 0; ii < 5; ii++){
+        log_msg("block: %d inode num: %d\ntype: %d, link_count: %d, size: %d, mode: %d, 1:%d 2:%d 3:%d 4:%d 5:%d 6:%d 7:%d 8:%d 9:%d 10:%d 11:%d\n\n",i, ii, xptr->i[ii].type, xptr->i[ii].link_count, xptr->i[ii].size, xptr->i[ii].mode, xptr->i[ii].b1, xptr->i[ii].b2, xptr->i[ii].b3, xptr->i[ii].b4, xptr->i[ii].b5, xptr->i[ii].b6, xptr->i[ii].b7, xptr->i[ii].b8, xptr->i[ii].b9, xptr->i[ii].b10, xptr->i[ii].b11);
+      }
+    }
+    */
+    /*
+    //writing in direntry array structs in blocks 21 - 45
+    direntry_array y;
+    for(i = 21; i <= 45; i++){
+      memset(buf, i, 512);
+      block_write(i, buf);
+      block_write(i, &y);
+    }
+    */
+
+
 
 /*
     log_msg("testing struct inode\n");
@@ -212,7 +287,25 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     log_msg("\nsfs_create(path=\"%s\", mode=0%03o, fi=0x%08x)\n",
         path, mode, fi);
 
-
+    char buf[512];
+    block_read(0, buf);
+    /*
+    superblock *ptr = (superblock *)buf;
+    if(ptr->num_inodes > 0 && ptr->num_datablocks > 0){
+      int i, j;
+      for(i = 0; i < sizeof(ptr->inode_map); i++){
+        if(ptr->inode_map[i] == 0){
+          for(j = 0; j < sizeof(ptr->data_map); j++){
+            if(ptr->data_map[j] == 0){
+              memset(buf, 0, 512);
+              block_read(1, buf);
+              inodes *inodesptr = (inodes *)buf;
+            }
+          }
+        }
+      }
+    }
+  */
     return retstat;
 }
 
