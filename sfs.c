@@ -108,10 +108,10 @@ void *sfs_init(struct fuse_conn_info *conn)
     memset(sb.sfsname, '\0', sizeof(sb.sfsname));
     char src[] = "poop";
     strncpy(sb.sfsname, src, sizeof(src));
-    sb.num_inodes = 5;
-    sb.num_datablocks = 5;
-    sb.total_num_inodes = 5;
-    sb.total_num_datablocks = 5;
+    sb.num_inodes = 100;
+    sb.num_datablocks = 1100;
+    sb.total_num_inodes = 100;
+    sb.total_num_datablocks = 1100;
 
     block_write(0, &sb);
     block_read(0, buf);
@@ -122,14 +122,15 @@ void *sfs_init(struct fuse_conn_info *conn)
 
     //filling in the char map (instead of bit map) for inode and data blocks below 
     int i;
-    /*for(i = 0; i < 100; i++){
-      psb->inode_map[i] = '0';
+    for(i = 0; i < 100; i++){
+      psb->inode_map[i] = 0;
       //psb->data_map[i] = 'b';
     }
-  */
+    block_write(0, buf);
+  
     // CREATING AND FILLING IN THE DATA CHAR MAPS, BLOCKS 1-3, (3 total)
     char data_map[267];
-    memset(data_map, '0', 267);
+    memset(data_map, 0, 267);
     for(i = 1; i <= 3; i++){
       // set this to something unusable (not 0 or 1), since there should only be 1100 data blocks, not 1101
       if(i == 3){
@@ -139,7 +140,8 @@ void *sfs_init(struct fuse_conn_info *conn)
     }
 
     //TESTING
-    /*int j;
+    /*
+    int j;
     char data_buf[512];
     for (i = 1; i <= 3; i++){
       block_read(i, data_buf);
@@ -172,17 +174,21 @@ void *sfs_init(struct fuse_conn_info *conn)
           x.i[ii].link_count = 0;
           x.i[ii].size = 0;
           x.i[ii].mode = 0;
-          x.i[ii].b1 = 0;
-          x.i[ii].b2 = 0;
-          x.i[ii].b3 = 0;
-          x.i[ii].b4 = 0;
-          x.i[ii].b5 = 0;
-          x.i[ii].b6 = 0;
-          x.i[ii].b7 = 0;
-          x.i[ii].b8 = 0;
-          x.i[ii].b9 = 0;
-          x.i[ii].b10 = 0;
-          x.i[ii].b11 = 0;
+          int d;
+          for(d = 0; d <= 11; d++){
+            x.i[ii].db[d] = -1;
+          }
+          // x.i[ii].b1 = -1;
+          // x.i[ii].b2 = -1;
+          // x.i[ii].b3 = -1;
+          // x.i[ii].b4 = -1;
+          // x.i[ii].b5 = -1;
+          // x.i[ii].b6 = -1;
+          // x.i[ii].b7 = -1;
+          // x.i[ii].b8 = -1;
+          // x.i[ii].b9 = -1;
+          // x.i[ii].b10 = -1;
+          // x.i[ii].b11 = -1;
       }
       block_write(i, &x);
     }
@@ -208,10 +214,6 @@ void *sfs_init(struct fuse_conn_info *conn)
       }
       block_write(i, &y);
     }
-
-    strcpy(y.d[0].name, "poo!\0");
-
-    block_write( 39, &y );
     //testing
     /*
     for(i = 24; i <= 48; i++){
@@ -240,7 +242,6 @@ void *sfs_init(struct fuse_conn_info *conn)
     
   return SFS_DATA;
 }
-
 /**
  * Clean up filesystem
  *
