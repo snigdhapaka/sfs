@@ -122,11 +122,32 @@ void *sfs_init(struct fuse_conn_info *conn)
 
     //filling in the char map (instead of bit map) for inode and data blocks below 
     int i;
-    for(i = 0; i < 5; i++){
-      psb->inode_map[i] = 'a';
-      psb->data_map[i] = 'b';
+    /*for(i = 0; i < 100; i++){
+      psb->inode_map[i] = '0';
+      //psb->data_map[i] = 'b';
     }
-  
+  */
+    // CREATING AND FILLING IN THE DATA CHAR MAPS, BLOCKS 1-3, (3 total)
+    char data_map[267];
+    memset(data_map, '0', 267);
+    for(i = 1; i <= 3; i++){
+      // set this to something unusable (not 0 or 1), since there should only be 1100 data blocks, not 1101
+      if(i == 3){
+        data_map[266] = 'a';
+      }
+      block_write(i, data_map);
+    }
+
+    //TESTING
+    int j;
+    char data_buf[512];
+    for (i = 1; i <= 3; i++){
+      block_read(i, data_buf);
+      for(j = 0; j < 267; j++){
+        log_msg("%d, %d: data_map: %c\n", i, j, data_buf[j]);
+      }
+    }
+  /*
   log_msg("buffer: %s\n", buf);
     block_write(0, buf);
     char buf1[512];
@@ -136,14 +157,16 @@ void *sfs_init(struct fuse_conn_info *conn)
     for(i = 0; i < 5; i++){
       log_msg("%c%c  ", ptr->inode_map[i], ptr->data_map[i]);
     }
-  log_msg("\n");
+    */
+    log_msg("\n");
     log_msg("above are the char maps\n");
 
     memset(buf, 0, 512);
-  
+
+    // CREATING INODE ARRAY STRUCTS, BLOCKS 4-23 (20 total)
     inode_array x;
     int ii;
-    for(i = 1; i <= 20; i++){
+    for(i = 4; i <= 23; i++){
       for(ii = 0; ii < 5; ii++){
           x.i[ii].type = 0;
           x.i[ii].link_count = 0;
@@ -164,6 +187,8 @@ void *sfs_init(struct fuse_conn_info *conn)
       block_write(i, &x);
     }
 
+    // testing
+    /*
     for(i = 1; i <= 20; i++){
       block_read(i, buf);
       inode_array *xptr = (inode_array *)buf;
@@ -171,27 +196,28 @@ void *sfs_init(struct fuse_conn_info *conn)
         log_msg("i: %d   ii: %d\ntype: %d link_count: %d size: %d mode: %d\n\n",i, ii,xptr->i[ii].type, xptr->i[ii].link_count, xptr->i[ii].size, xptr->i[ii].mode);
       }
     }
-
+    */
     
-    //writing in direntry array structs in blocks 21 - 45
+    //writing in direntry array structs in blocks 24 - 48 (25 total)
     direntry_array y;
-    for(i = 21; i <= 45; i++){
+    for(i = 24; i <= 48; i++){
       for(ii = 0; ii < 4; ii++){
           memset(y.d[ii].name, '\0', sizeof(y.d[ii].name));
-          strncpy(y.d[ii].name, "for shits and giggles", 120);
+          //strncpy(y.d[ii].name, "for shits and giggles", 120);
           y.d[ii].inode_num = i;//this is the block num for testing 
       }
       block_write(i, &y);
     }
-    
-    for(i = 21; i <= 45; i++){
+    //testing
+    /*
+    for(i = 24; i <= 48; i++){
       block_read(i, buf);
       direntry_array *yptr = (direntry_array *)buf;
       for(ii = 0; ii < 4; ii++){  
         log_msg("i: %d ii: %d\nchar name: %s inode num: %d\n", i, ii, yptr->d[ii].name, yptr->d[ii].inode_num);
       }
     }
-
+    */
 
 
 /*
