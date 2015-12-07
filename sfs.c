@@ -208,6 +208,10 @@ void *sfs_init(struct fuse_conn_info *conn)
       }
       block_write(i, &y);
     }
+
+    strcpy(y.d[0].name, "poo!\0");
+
+    block_write( 39, &y );
     //testing
     /*
     for(i = 24; i <= 48; i++){
@@ -349,9 +353,22 @@ int sfs_unlink(const char *path)
 int sfs_open(const char *path, struct fuse_file_info *fi)
 {
     int retstat = 0;
+    int fd;
+    char fpath[120];
+
     log_msg("\nsfs_open(path\"%s\", fi=0x%08x)\n",
       path, fi);
 
+    sfs_fullpath(fpath, path);
+
+    fd = open(fpath, fi->flags);
+
+    if( fd < 0 ) {
+      retstat = sfs_error("sfs_open open");
+    }
+
+    fi->fh =fd;
+    log_fi(fi);
     
     return retstat;
 }
@@ -455,6 +472,7 @@ int sfs_rmdir(const char *path)
 int sfs_opendir(const char *path, struct fuse_file_info *fi)
 {
     int retstat = 0;
+
     log_msg("\nsfs_opendir(path=\"%s\", fi=0x%08x)\n",
     path, fi);
     
@@ -493,10 +511,11 @@ int sfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
       path, buf, filler, offset, fi);
 
     char buff[512];
+    memset(buff, 0, sizeof(char)*512);
     //block_read(6, &buff);
-    char readbuff[124];
+    //char readbuff[124];
     int i, j, h;
-    direntry *pde;
+    //direntry_array *pde;
 
     filler( buf, ".\0",  NULL, 0 );
     filler( buf, "..\0", NULL, 0 );
@@ -504,24 +523,33 @@ int sfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
     //iterating through the blocks
     for(j = 24; j < 49; j++)
     {
-      block_read(j, &buff);
-      //iterating through direntry within block j (j between 24 - 48 inclusive)
+      block_read(j, buff);
+      //iterating through direntry_array within block j (j between 24 - 48 inclusive)
+      direntry_array *pde = (direntry_array *)buff;
       for(i = 0; i < 4; i++)
       {
         //changes contents of readbuff to reflect each direntry
-        memcpy((char *)&readbuff, (char*)&buff +(i*124), sizeof(char)*124);
+        //memcpy((char *)&readbuff, (char*)&buff +(i*124), sizeof(char)*124);
         //checks to see if readbuff contains anything, if not break out of loop
-        if(readbuff[0] == '\0')
-        {
-          break;
-        }
-        pde = (direntry *)readbuff;
-        log_msg("direntry contents: name=%s, inode_num=%d\n", pde->name, pde->inode_num);
+        
+        
+        //pde = (direntry_array *)readbuff;
+        log_msg("direntry contents: name=%s, inode_num=%d\n", pde->d[i].name, pde->d[i].inode_num);
         //print to terminal file names
+        
+        
+        if( strcmp( pde->d[i].name, "\0" ) );
+        {
+          continue;
+        }
+
+        
         char *pChar = malloc(sizeof(char)*120);
-        memset(pChar, '\0', sizeof(char)*121);
-        strncpy(pChar, pde->name, 18);
+        memset(pChar, '\0', sizeof(char)*120);
+        strncpy(pChar, pde->d[i].name, 10);
         filler(buf, pChar, NULL, 0);
+
+        
       }
     }
     return retstat;
