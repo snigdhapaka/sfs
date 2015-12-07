@@ -191,17 +191,28 @@ static void sfs_fullpath(char fpath[PATH_MAX], const char *path)
  */
 int sfs_getattr(const char *path, struct stat *statbuf)
 {
-    int retstat = 0;
+        int retstat = 0;
     char fpath[PATH_MAX];
 
     log_msg("\nsfs_getattr(path=\"%s\", statbuf=0x%08x)\n",
     path, statbuf);
   
+  //sfs_fullpath(fpath, path);
+   memset(statbuf, 0, sizeof(struct stat));
+  if (strcmp(path, "/") == 0) {
+    log_msg("I was here as a directory");
+    statbuf->st_mode = S_IFDIR | 0777;
+    statbuf->st_nlink = 2;
+    log_msg("I am leaving here as a directory");
+  } else /*if (strcmp(path, hello_path) == 0) */{
+    log_msg("I was here as a FILE");
+    statbuf->st_mode = S_IFREG | 0777;
+    statbuf->st_nlink = 1;
+    statbuf->st_size = 1;
+    log_msg("\nI am a file called=>  path=\"%s\")\n", path);
+  } //else
+    //res = -ENOENT;
 
-    retstat = lstat(path, statbuf);
-    if (retstat != 0)
-    retstat = sfs_error("sfs_getattr lstat");
-  statbuf->st_mode = S_IFDIR | 0777;
     log_stat(statbuf);
     
     return retstat;
@@ -410,16 +421,19 @@ int sfs_open(const char *path, struct fuse_file_info *fi)
 
     log_msg("\nsfs_open(path\"%s\", fi=0x%08x)\n",
       path, fi);
-
-    sfs_fullpath(fpath, path);
+    
+    //sfs_fullpath(fpath, path);
 
     fd = open(fpath, fi->flags);
-
+    log_msg("Did open() work?\n");
+    
+    fd = 1;
     if( fd < 0 ) {
       retstat = sfs_error("sfs_open open");
     }
-
+    
     fi->fh =fd;
+    
     log_fi(fi);
     
     return retstat;
