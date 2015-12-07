@@ -139,14 +139,14 @@ void *sfs_init(struct fuse_conn_info *conn)
     }
 
     //TESTING
-    int j;
+    /*int j;
     char data_buf[512];
     for (i = 1; i <= 3; i++){
       block_read(i, data_buf);
       for(j = 0; j < 267; j++){
         log_msg("%d, %d: data_map: %c\n", i, j, data_buf[j]);
       }
-    }
+    }*/
   /*
   log_msg("buffer: %s\n", buf);
     block_write(0, buf);
@@ -493,34 +493,37 @@ int sfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
       path, buf, filler, offset, fi);
 
     char buff[512];
-    block_read(6, &buff);
+    //block_read(6, &buff);
     char readbuff[124];
-    int i;
+    int i, j, h;
     direntry *pde;
 
     filler( buf, ".\0",  NULL, 0 );
     filler( buf, "..\0", NULL, 0 );
-    for(i = 0; i < 4; i++)
+
+    //iterating through the blocks
+    for(j = 24; j < 49; j++)
     {
-      memcpy((char *)&readbuff, (char*)&buff +(i*124), sizeof(char)*124);
-      if(readbuff[0] == '\0')
+      block_read(j, &buff);
+      //iterating through direntry within block j (j between 24 - 48 inclusive)
+      for(i = 0; i < 4; i++)
       {
-        break;
+        //changes contents of readbuff to reflect each direntry
+        memcpy((char *)&readbuff, (char*)&buff +(i*124), sizeof(char)*124);
+        //checks to see if readbuff contains anything, if not break out of loop
+        if(readbuff[0] == '\0')
+        {
+          break;
+        }
+        pde = (direntry *)readbuff;
+        log_msg("direntry contents: name=%s, inode_num=%d\n", pde->name, pde->inode_num);
+        //print to terminal file names
+        char *pChar = malloc(sizeof(char)*120);
+        memset(pChar, '\0', sizeof(char)*121);
+        strncpy(pChar, pde->name, 18);
+        filler(buf, pChar, NULL, 0);
       }
-      pde = (direntry *)readbuff;
-      log_msg("direntry contents: name=%s, inode_num=%d\n", pde->name, pde->inode_num);
-
-      char *pChar = malloc(sizeof(char)*120);
-
-      memset(pChar, '\0', sizeof(char)*121);
-
-      strncpy(pChar, pde->name, 18);
-
-      filler(buf, pChar, NULL, 0);
-
     }
-
-
     return retstat;
 }
 
