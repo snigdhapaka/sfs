@@ -460,9 +460,41 @@ int sfs_opendir(const char *path, struct fuse_file_info *fi)
 int sfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset,
          struct fuse_file_info *fi)
 {
+    
     int retstat = 0;
-    
-    
+
+    log_msg("\nsfs_readdir(path=\"%s\", buf=0x%08x, filler=0x%08x, offset=%lld, fi=0x%08x)\n",
+      path, buf, filler, offset, fi);
+
+    char buff[512];
+    block_read(6, &buff);
+    char readbuff[124];
+    int i;
+    direntry *pde;
+
+    filler( buf, ".\0",  NULL, 0 );
+    filler( buf, "..\0", NULL, 0 );
+    for(i = 0; i < 4; i++)
+    {
+      memcpy((char *)&readbuff, (char*)&buff +(i*124), sizeof(char)*124);
+      if(readbuff[0] == '\0')
+      {
+        break;
+      }
+      pde = (direntry *)readbuff;
+      log_msg("direntry contents: name=%s, inode_num=%d\n", pde->name, pde->inode_num);
+
+      char *pChar = malloc(sizeof(char)*120);
+
+      memset(pChar, '\0', sizeof(char)*121);
+
+      strncpy(pChar, pde->name, 18);
+
+      filler(buf, pChar, NULL, 0);
+
+    }
+
+
     return retstat;
 }
 
