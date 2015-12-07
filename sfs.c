@@ -278,14 +278,15 @@ int sfs_getattr(const char *path, struct stat *statbuf)
 
     log_msg("\nsfs_getattr(path=\"%s\", statbuf=0x%08x)\n",
     path, statbuf);
-  
-
-    retstat = lstat(path, statbuf);
-    if (retstat != 0)
-    retstat = sfs_error("sfs_getattr lstat");
-  statbuf->st_mode = S_IFDIR | 0777;
-    log_stat(statbuf);
-    
+    memset(stbuf, 0, sizeof(struct stat));
+    if (strcmp(path, "/") == 0) {
+      stbuf->st_mode = S_IFDIR | 0777;
+      stbuf->st_nlink = 2;
+    } else {
+      stbuf->st_mode = S_IFREG | 0777;
+      stbuf->st_nlink = 1;
+      stbuf->st_size = 0;
+    }
     return retstat;
 }
 
