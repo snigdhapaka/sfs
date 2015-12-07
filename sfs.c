@@ -57,7 +57,6 @@ typedef struct superblock_struct{
   int total_num_inodes;
   int total_num_datablocks;
   char inode_map[100];
-  char data_map[100];
 }superblock;
 
 typedef struct inode_struct{
@@ -65,17 +64,7 @@ typedef struct inode_struct{
   int link_count;//how many hardlinks are pointing to it
   int size;//size of file in bytes
   int mode;//read or write mode?
-  int b1;
-  int b2;
-  int b3;
-  int b4;
-  int b5;
-  int b6;
-  int b7;
-  int b8;
-  int b9;
-  int b10;
-  int b11;
+  int db[11];
 }inode;
 
 typedef struct inode_array_struct{
@@ -90,6 +79,7 @@ typedef struct direntry_struct{
 typedef struct direntry_array_struct{
   direntry d[4];
 }direntry_array;
+
 
 void *sfs_init(struct fuse_conn_info *conn)
 {
@@ -108,28 +98,25 @@ void *sfs_init(struct fuse_conn_info *conn)
     memset(sb.sfsname, '\0', sizeof(sb.sfsname));
     char src[] = "poop";
     strncpy(sb.sfsname, src, sizeof(src));
-    sb.num_inodes = 5;
-    sb.num_datablocks = 5;
-    sb.total_num_inodes = 5;
-    sb.total_num_datablocks = 5;
+    sb.num_inodes = 100;
+    sb.num_datablocks = 1100;
+    sb.total_num_inodes = 100;
+    sb.total_num_datablocks = 1100;
 
-    block_write(0, &sb);
-    block_read(0, buf);
-    log_msg("Superblock: \n", buf);
-    superblock *psb = (superblock *)buf;
-    log_msg("it works!!  %s, %d, %d, %d, %d\n", psb->sfsname, psb->num_inodes, psb->num_datablocks, psb->total_num_inodes, psb->total_num_datablocks);
-    log_msg("size of block: %d\n", sizeof(buf));
+    // block_write(0, &sb);
+    // block_read(0, buf);
+    // superblock *psb = (superblock *)buf;
 
     //filling in the char map (instead of bit map) for inode and data blocks below 
     int i;
-    /*for(i = 0; i < 100; i++){
-      psb->inode_map[i] = '0';
-      //psb->data_map[i] = 'b';
+    for(i = 0; i < 100; i++){
+      sb.inode_map[i] = 0;
     }
-  */
+    block_write(0, &sb);
+  
     // CREATING AND FILLING IN THE DATA CHAR MAPS, BLOCKS 1-3, (3 total)
     char data_map[267];
-    memset(data_map, '0', 267);
+    memset(data_map, 0, 267);
     for(i = 1; i <= 3; i++){
       // set this to something unusable (not 0 or 1), since there should only be 1100 data blocks, not 1101
       if(i == 3){
@@ -137,29 +124,6 @@ void *sfs_init(struct fuse_conn_info *conn)
       }
       block_write(i, data_map);
     }
-
-    //TESTING
-    /*int j;
-    char data_buf[512];
-    for (i = 1; i <= 3; i++){
-      block_read(i, data_buf);
-      for(j = 0; j < 267; j++){
-        log_msg("%d, %d: data_map: %c\n", i, j, data_buf[j]);
-      }
-    }*/
-  /*
-  log_msg("buffer: %s\n", buf);
-    block_write(0, buf);
-    char buf1[512];
-    block_read(0, buf1);
-  superblock *ptr = (superblock *)buf1;
-  log_msg("buffer1: %s\n", buf1);
-    for(i = 0; i < 5; i++){
-      log_msg("%c%c  ", ptr->inode_map[i], ptr->data_map[i]);
-    }
-    */
-    log_msg("\n");
-    log_msg("above are the char maps\n");
 
     memset(buf, 0, 512);
 
@@ -172,70 +136,24 @@ void *sfs_init(struct fuse_conn_info *conn)
           x.i[ii].link_count = 0;
           x.i[ii].size = 0;
           x.i[ii].mode = 0;
-          x.i[ii].b1 = 0;
-          x.i[ii].b2 = 0;
-          x.i[ii].b3 = 0;
-          x.i[ii].b4 = 0;
-          x.i[ii].b5 = 0;
-          x.i[ii].b6 = 0;
-          x.i[ii].b7 = 0;
-          x.i[ii].b8 = 0;
-          x.i[ii].b9 = 0;
-          x.i[ii].b10 = 0;
-          x.i[ii].b11 = 0;
+          int d;
+          for(d = 0; d <= 11; d++){
+            x.i[ii].db[d] = -1;
+          }
       }
       block_write(i, &x);
     }
-
-    // testing
-    /*
-    for(i = 1; i <= 20; i++){
-      block_read(i, buf);
-      inode_array *xptr = (inode_array *)buf;
-      for(ii = 0; ii < 5; ii++){  
-        log_msg("i: %d   ii: %d\ntype: %d link_count: %d size: %d mode: %d\n\n",i, ii,xptr->i[ii].type, xptr->i[ii].link_count, xptr->i[ii].size, xptr->i[ii].mode);
-      }
-    }
-    */
     
     //writing in direntry array structs in blocks 24 - 48 (25 total)
     direntry_array y;
     for(i = 24; i <= 48; i++){
       for(ii = 0; ii < 4; ii++){
           memset(y.d[ii].name, '\0', sizeof(y.d[ii].name));
-          //strncpy(y.d[ii].name, "for shits and giggles", 120);
-          y.d[ii].inode_num = i;//this is the block num for testing 
+          y.d[ii].inode_num = -1;//this is the block num for testing 
       }
       block_write(i, &y);
     }
-
-    strcpy(y.d[0].name, "poo!\0");
-
-    block_write( 39, &y );
-    //testing
-    /*
-    for(i = 24; i <= 48; i++){
-      block_read(i, buf);
-      direntry_array *yptr = (direntry_array *)buf;
-      for(ii = 0; ii < 4; ii++){  
-        log_msg("i: %d ii: %d\nchar name: %s inode num: %d\n", i, ii, yptr->d[ii].name, yptr->d[ii].inode_num);
-      }
-    }
-    */
-
-
-/*
-    log_msg("testing struct inode\n");
-    struct inode test;
-    test.b1 = 555512;
-    test.b2 = 555513;
-    block_write(1, &test);
-    char buf3[512];
-    block_read(1, buf3)
-    struct inode *try;
-    try = (struct inode*) buf3;
-    log_msg("it works!!  %d, %d\n", try->b1, try->b2);
-*/
+   
   log_msg("end of init function\n");
     
   return SFS_DATA;
@@ -436,7 +354,7 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     char direntry_buf[512];
     block_read(direntry_block_num, direntry_buf);
     direntry_array *direntry_block = (direntry_array *)direntry_buf;
-    strncpy(direntry_block->d[direntry_block_index].name, path+1, 120);
+    strncpy(direntry_block->d[direntry_block_index].name, path, 120);
     direntry_block->d[direntry_block_index].inode_num = free_inode;
     block_write(direntry_block_num, direntry_buf);
 
@@ -680,7 +598,7 @@ int sfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
         
         char *pChar = malloc(sizeof(char)*120);
         memset(pChar, '\0', sizeof(char)*120);
-        strncpy(pChar, pde->d[i].name, 10);
+        strncpy(pChar, pde->d[i].name+1, 10);
         filler(buf, pChar, NULL, 0);
 
         
