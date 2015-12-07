@@ -278,15 +278,14 @@ int sfs_getattr(const char *path, struct stat *statbuf)
 
     log_msg("\nsfs_getattr(path=\"%s\", statbuf=0x%08x)\n",
     path, statbuf);
-    memset(stbuf, 0, sizeof(struct stat));
-    if (strcmp(path, "/") == 0) {
-      stbuf->st_mode = S_IFDIR | 0777;
-      stbuf->st_nlink = 2;
-    } else {
-      stbuf->st_mode = S_IFREG | 0777;
-      stbuf->st_nlink = 1;
-      stbuf->st_size = 0;
-    }
+  
+
+    retstat = lstat(path, statbuf);
+    if (retstat != 0)
+    retstat = sfs_error("sfs_getattr lstat");
+  statbuf->st_mode = S_IFDIR | 0777;
+    log_stat(statbuf);
+    
     return retstat;
 }
 
@@ -310,8 +309,141 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     log_msg("\nsfs_create(path=\"%s\", mode=0%03o, fi=0x%08x)\n",
         path, mode, fi);
 
+    // CHECK if file name already exists
     char buf[512];
+    /* 
+    //test code
     block_read(0, buf);
+    superblock *sb = (superblock *)buf;
+    char *inode_map_t = sb->inode_map;
+    sb->num_inodes--;
+    inode_map_t[0] = 1;
+    block_write(0, buf);
+
+    block_read(24, buf);
+    direntry_array *direntries = (direntry_array *)buf;
+    strncpy(direntries->d[0].name, "/test", 120);
+    block_write(24, buf);
+*/
+    //THIS IS HOW YOU GO THROUGH THE DIRENTRIES
+    //block_read(24, buf); // you will need to go through blocks 24-48
+    //direntries = (direntry_array *)buf; // direntries is a direntry_array (initialized above)
+
+    int i,j;
+    for(i = 24; i <= 48; i++){
+      block_read(i, buf);
+      direntry_array *direntries = (direntry_array *)buf;
+      for(j = 0; j < 4; j++){
+        if(strcmp(direntries->d[j].name, path) == 0){
+          log_msg("ERROR: Cannot create file with same name as an existing file.\n");
+          return retstat;
+        } 
+      }
+    }
+
+    // END TRAVERSING DIRENTRIES
+    
+    log_msg("now creating file\n");
+
+    //time to go through inode char map to find next free direntry/inode
+    char sb_b[512];
+    block_read(0, sb_b);
+    superblock *sb_buf = (superblock *)sb_b;
+    char *inode_map = sb_buf->inode_map;
+    int free_inode = -1;
+    if(sb_buf->num_inodes > 0){
+      //log_msg("num free inodes: %d\n", sb_buf->num_inodes);
+      for(free_inode = 0; free_inode < 100; free_inode++){
+        //log_msg("free_inode num: %d, val: %d\n", free_inode, inode_map[free_inode]);
+        if(inode_map[free_inode] == 0){
+          //WE HAVE A FREE INODE
+          log_msg("FREE INODE: %d\n", free_inode);
+          sb_buf->num_inodes--;
+          inode_map[free_inode] = 1;
+          break;
+        }
+      }
+      if(free_inode == 99){
+        log_msg("*ERROR: NO FREE INODES, CANNOT CREATE ANY MORE FILES IN DIRECTORY <should never reach this case>");
+        return retstat;
+      }
+    }
+    else{
+      log_msg("ERROR: NO FREE INODES, CANNOT CREATE ANY MORE FILES IN DIRECTORY");
+      return retstat;
+    }
+
+    //time to go through data char map to find next free data block
+    int data_block = -1;
+    int data_index = -1;
+    int datablock_num = 0;
+    int done = 0;
+    char data_buf[512];
+    if(sb_buf->num_datablocks > 0){
+      //log_msg("num free datablocks: %d\n", sb_buf->num_datablocks);
+      for(data_block = 1; data_block <= 3; data_block++){
+        block_read(data_block, data_buf);
+        char *data_map = (char *)data_buf;
+        for(data_index = 0; data_index < 267; data_index++){
+          if(data_map[data_index] == 0){
+            //WE HAVE A FREE DATA BLOCK;
+            log_msg("FREE DATABLOCK: %d, %d\n", data_block, data_index);
+            sb_buf->num_datablocks--;
+            data_map[data_index] = 1;
+            block_write(data_block, data_buf);
+            done = 1;
+            break;
+          }
+          datablock_num++;
+        }
+        if(done == 1){
+          break;
+        } else if(data_block == 3 && data_index == 266){
+          //NO FREE DATA BLOCK
+          log_msg("*ERROR: NO FREE DATA BLOCKS <should never reach this error case>\n");
+        }
+      }
+    }
+    else{
+      log_msg("*ERROR: NO FREE DATA BLOCKS <should never reach this error case>\n");
+    }
+
+    log_msg("DATABLOCK_NUM: %d\n", datablock_num);
+
+    //find and alter inode struct
+    int inode_block_num = 4 + free_inode/5;
+    int inode_block_index = free_inode%5;
+    log_msg("INODE USED AT block %d index %d\n", inode_block_num, inode_block_index);
+    log_msg("pointer to datablock %d\n", datablock_num);
+    char inode_buf[512];
+    block_read(inode_block_num, inode_buf);
+    inode_array *inode_block = (inode_array*) inode_buf;
+    for(i = 0; i<=11; i++){
+      if(inode_block->i[inode_block_index].db[i] < 0){
+        inode_block->i[inode_block_index].db[i] = datablock_num;
+        inode_block->i[inode_block_index].mode = (int) mode;
+        log_msg("WE HAVE A FREE DATABLOCK!!! %d pointing to %d\n", i, inode_block->i[inode_block_index].db[i]);
+        block_write(inode_block_num, inode_buf);
+        break;
+      }
+    }
+
+
+    //find and alter direntries struct
+    int direntry_block_num = 24 + free_inode/4;
+    int direntry_block_index = free_inode%4;
+    log_msg("DIRENTRY USED AT block %d index %d\n", direntry_block_num, direntry_block_index);
+    char direntry_buf[512];
+    block_read(direntry_block_num, direntry_buf);
+    direntry_array *direntry_block = (direntry_array *)direntry_buf;
+    strncpy(direntry_block->d[direntry_block_index].name, path+1, 120);
+    direntry_block->d[direntry_block_index].inode_num = free_inode;
+    block_write(direntry_block_num, direntry_buf);
+
+
+    //CHECKING TO SEE IF IT WORKED
+
+
     /*
     superblock *ptr = (superblock *)buf;
     if(ptr->num_inodes > 0 && ptr->num_datablocks > 0){
@@ -329,6 +461,7 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
       }
     }
   */
+    block_write(0, sb_buf);
     return retstat;
 }
 
