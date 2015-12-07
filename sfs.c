@@ -538,7 +538,7 @@ int sfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
         //print to terminal file names
         
         
-        if( strcmp( pde->d[i].name, "\0" ) );
+        if( pde->d[i].name[0] == '\0' )
         {
           continue;
         }
