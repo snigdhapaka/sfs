@@ -140,65 +140,57 @@ void *sfs_init(struct fuse_conn_info *conn)
     log_msg("above are the char maps\n");
 
     memset(buf, 0, 512);
-    //writing in inode array structs in blocks 1 - 20
+  
     inode_array x;
-    //for(i = 1; i <= 20; i++){
-      //memset(buf, '1', 512);//don't need b/c there won't be chars that need null terminator
-      //block_write(i, buf);
     int ii;
     for(i = 1; i <= 20; i++){
       for(ii = 0; ii < 5; ii++){
-          x.i[ii].type = i;
-          x.i[ii].link_count = i;
-          x.i[ii].size = i;
-          x.i[ii].mode = i;
-          x.i[ii].b1 = i;
-          x.i[ii].b2 = i;
-          x.i[ii].b3 = i;
-          x.i[ii].b4 = i;
-          x.i[ii].b5 = i;
-          x.i[ii].b6 = i;
-          x.i[ii].b7 = i;
-          x.i[ii].b8 = i;
-          x.i[ii].b9 = i;
-          x.i[ii].b10 = i;
-          x.i[ii].b11 = i;
+          x.i[ii].type = 0;
+          x.i[ii].link_count = 0;
+          x.i[ii].size = 0;
+          x.i[ii].mode = 0;
+          x.i[ii].b1 = 0;
+          x.i[ii].b2 = 0;
+          x.i[ii].b3 = 0;
+          x.i[ii].b4 = 0;
+          x.i[ii].b5 = 0;
+          x.i[ii].b6 = 0;
+          x.i[ii].b7 = 0;
+          x.i[ii].b8 = 0;
+          x.i[ii].b9 = 0;
+          x.i[ii].b10 = 0;
+          x.i[ii].b11 = 0;
       }
       block_write(i, &x);
     }
 
     for(i = 1; i <= 20; i++){
-	  memset(buf, '\0', 512);
       block_read(i, buf);
       inode_array *xptr = (inode_array *)buf;
       for(ii = 0; ii < 5; ii++){  
         log_msg("i: %d   ii: %d\ntype: %d link_count: %d size: %d mode: %d\n\n",i, ii,xptr->i[ii].type, xptr->i[ii].link_count, xptr->i[ii].size, xptr->i[ii].mode);
       }
     }
+
     
-    //}
-    //read values from inodes in inode_array into log file
-    /*inode_array *xptr;
-    for(i = 1; i <= 20; i++){
-      i = 1;
-      memset(buf, 0, 512);
-      block_read(i, buf);
-      xptr = (inode_array *)buf;
-      int ii;
-      for(ii = 0; ii < 5; ii++){
-        log_msg("block: %d inode num: %d\ntype: %d, link_count: %d, size: %d, mode: %d, 1:%d 2:%d 3:%d 4:%d 5:%d 6:%d 7:%d 8:%d 9:%d 10:%d 11:%d\n\n",i, ii, xptr->i[ii].type, xptr->i[ii].link_count, xptr->i[ii].size, xptr->i[ii].mode, xptr->i[ii].b1, xptr->i[ii].b2, xptr->i[ii].b3, xptr->i[ii].b4, xptr->i[ii].b5, xptr->i[ii].b6, xptr->i[ii].b7, xptr->i[ii].b8, xptr->i[ii].b9, xptr->i[ii].b10, xptr->i[ii].b11);
-      }
-    }
-    */
-    /*
     //writing in direntry array structs in blocks 21 - 45
     direntry_array y;
     for(i = 21; i <= 45; i++){
-      memset(buf, i, 512);
-      block_write(i, buf);
+      for(ii = 0; ii < 4; ii++){
+          memset(y.d[ii].name, '\0', sizeof(y.d[ii].name));
+          strncpy(y.d[ii].name, "for shits and giggles", 120);
+          y.d[ii].inode_num = i;//this is the block num for testing 
+      }
       block_write(i, &y);
     }
-    */
+    
+    for(i = 21; i <= 45; i++){
+      block_read(i, buf);
+      direntry_array *yptr = (direntry_array *)buf;
+      for(ii = 0; ii < 4; ii++){  
+        log_msg("i: %d ii: %d\nchar name: %s inode num: %d\n", i, ii, yptr->d[ii].name, yptr->d[ii].inode_num);
+      }
+    }
 
 
 
