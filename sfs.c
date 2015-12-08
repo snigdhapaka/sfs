@@ -115,12 +115,12 @@ void *sfs_init(struct fuse_conn_info *conn)
     block_write(0, &sb);
   
     // CREATING AND FILLING IN THE DATA CHAR MAPS, BLOCKS 1-3, (3 total)
-    char data_map[267];
-    memset(data_map, 0, 267);
+    char data_map[367];
+    memset(data_map, 0, 367);
     for(i = 1; i <= 3; i++){
       // set this to something unusable (not 0 or 1), since there should only be 1100 data blocks, not 1101
       if(i == 3){
-        data_map[266] = 'a';
+        data_map[366] = 'a';
       }
       block_write(i, data_map);
     }
@@ -314,7 +314,7 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
       for(data_block = 1; data_block <= 3; data_block++){
         block_read(data_block, data_buf);
         char *data_map = (char *)data_buf;
-        for(data_index = 0; data_index < 267; data_index++){
+        for(data_index = 0; data_index < 367; data_index++){
           if(data_map[data_index] == 0){
             //WE HAVE A FREE DATA BLOCK;
             log_msg("FREE DATABLOCK: %d, %d\n", data_block, data_index);
@@ -328,7 +328,7 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
         }
         if(done == 1){
           break;
-        } else if(data_block == 3 && data_index == 266){
+        } else if(data_block == 3 && data_index == 366){
           //NO FREE DATA BLOCK
           log_msg("*ERROR: NO FREE DATA BLOCKS <should never reach this error case>\n");
         }
@@ -400,6 +400,88 @@ int sfs_unlink(const char *path)
 {
     int retstat = 0;
     log_msg("sfs_unlink(path=\"%s\")\n", path);
+
+    char buf[512];
+    int i,j, found;
+    for(i = 24; i <= 48; i++){
+      block_read(i, buf);
+      direntry_array *direntries = (direntry_array *)buf;
+      for(j = 0; j < 4; j++){
+        if(strcmp(direntries->d[j].name, path) == 0){
+          log_msg("DELETING file %s == %s\n", path, direntries->d[j].name);
+
+          // remove file!
+          direntry dirent = direntries->d[j];
+          memset(direntries->d[j].name, '\0', 120);
+
+
+           //change superblock
+          char sb_buf[512];
+          block_read(0, sb_buf);
+          superblock *sb = (superblock *)sb_buf;
+          sb->num_inodes++;
+          int inode_map_num = (i-24)*4 + j;
+          sb->inode_map[inode_map_num] = 0;
+          log_msg("CHANGED inode map at index: %d\n", inode_map_num);
+
+          //change inode
+          char inode_buf[512];
+          int inode_block = dirent.inode_num/5+4;
+          int inode_block_index = dirent.inode_num%5;
+          block_read(inode_block, inode_buf);
+          log_msg("inode found at block %d index %d\n", inode_block, inode_block_index);
+          inode_array *inode_arr = (inode_array *)inode_buf;
+          inode curr_inode = inode_arr->i[inode_block_index];
+          
+          char datablock_buf[512];
+          int x;
+          for(x = 0; x < 11; x++){
+            if (curr_inode.db[x] >= 0){
+              log_msg("inode datablock value at index %d is %d\n", x, curr_inode.db[x]);
+              
+              // increment available datablocks
+              sb->num_datablocks++;
+              // clean datablock
+              log_msg("cleaned datablock at block %d\n", curr_inode.db[x]+49);
+              block_read(curr_inode.db[x]+49, datablock_buf);
+              memset(datablock_buf, 0, 512);
+              block_write(curr_inode.db[x], datablock_buf);
+
+              // change data map bit
+              int data_map_block = curr_inode.db[x]/366+1;
+              int data_map_index = curr_inode.db[x]%366;
+              log_msg("data map bit changed at block %d index %d\n", data_map_block, data_map_index);
+              char data_map_buf[512];
+              block_read(data_map_block, data_map_buf);
+              char *data_map = (char *)data_map_buf;
+              data_map[data_map_index] = 0;
+              block_write(data_map_block, data_map_buf);
+
+              curr_inode.db[x] = -1;
+            }
+
+          }
+          block_write(inode_block, inode_buf);
+          block_write(i, buf);
+            block_read(i, buf);
+            direntries = (direntry_array *)buf;
+            log_msg("Name of file is now: %s (SHOULD BE NOTHING)\n", direntries->d[j].name);
+          block_write(0,sb_buf);
+          //change data map
+
+          found = -1;
+          break;
+        } 
+      }
+      if(found ==-1){
+        break;
+      }
+    }
+    log_msg("i: %d j: %d\n", i , j);
+    if(i==49 && j==4){
+      log_msg("ERROR: CANNOT DELETE FILE, FILE NOT FOUND.\n");
+    }
+
 
     return retstat;
 }
