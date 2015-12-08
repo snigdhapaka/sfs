@@ -536,8 +536,80 @@ int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
     int retstat = 0;
     log_msg("\nsfs_read(path=\"%s\", buf=0x%08x, size=%d, offset=%lld, fi=0x%08x)\n",
       path, buf, size, offset, fi);
+    log_fi(fi);
+    /*
+    //get file name from path (aka remove the slash in front at the very least)
+    char * file_name;
+    if(path[0] == '/')
+      strcpy(file_name, path+1);
 
-   
+    //find file in the structs
+    char readbuff[512];
+    int i,j, inode;
+    for(i = 24; i <= 48; i++){
+      block_read(i, readbuff);
+      direntry_array *direntries = (direntry_array *)readbuff;
+      
+      for( j = 0; j < 4; j++ ){
+        if( strcmp( direntries->d[j].name, path ) == 0 ){
+          log_msg( "File found witihn direntries\n" );
+          j = -1;
+          inode = direntries->d[j].inode_num;
+          break;
+        } 
+      }
+      if( j==-1 ){
+        break;
+      }
+    }
+
+    //do math
+    //read data
+
+    int block_num = 4 + inode/5;
+    int block_index = inode%5;
+    char inodebuff[512];
+    char db_buff[512];
+    char copybuff[512];
+
+    block_read(block_num, inodebuff);
+    inode_array *inodeptr = (inode_array *)inodebuff;
+
+    for(i = offset/512; i < 11; i++)
+    {
+      
+      int db_block = inodeptr->i[block_index].db[i] + 49;
+    
+      if ( ( db_block - 49 ) == -1 ) {
+        break;
+      }
+
+      if ( size < 512 ) {
+
+      }
+      
+      block_read( db_block, db_buff );
+
+      if (i == offset/512) {
+        if (db_buff[0] == '\0') {
+          strncpy( copybuff, db_buff[ offset%512 ], 512 - ( offset%512 ) );
+          size = size - (512 - ( offset%512 ) ); 
+        }
+      } else {
+        strncpy ( copybuff, db_buff, 512 );
+        size = size - 512;
+      }
+
+      strcat( buf, copybuff );
+    }
+
+
+
+    retstat = pread(fi->fh, buf, size, offset);
+    log_msg("buff: %s, retstat: %d", buf, retstat);
+    if(retstat < 0)
+      retstat = sfs_error("sfs_read read");
+   */
     return retstat;
 }
 
