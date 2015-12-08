@@ -252,10 +252,11 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     superblock *sb_buf = (superblock *)sb_b;
     char *inode_map = sb_buf->inode_map;
     int free_inode = -1;
+    log_msg("num free inodes: %d\n", sb_buf->num_inodes);
     if(sb_buf->num_inodes > 0){
       //log_msg("num free inodes: %d\n", sb_buf->num_inodes);
       for(free_inode = 0; free_inode < 100; free_inode++){
-        //log_msg("free_inode num: %d, val: %d\n", free_inode, inode_map[free_inode]);
+        log_msg("free_inode num: %d, val: %d\n", free_inode, inode_map[free_inode]);
         if(inode_map[free_inode] == 0){
           //WE HAVE A FREE INODE
           log_msg("FREE INODE: %d\n", free_inode);
@@ -542,7 +543,6 @@ int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
     char * file_name;
     if(path[0] == '/')
       strcpy(file_name, path+1);
-
     //find file in the structs
     char readbuff[512];
     int i,j, inode;
@@ -562,19 +562,15 @@ int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
         break;
       }
     }
-
     //do math
     //read data
-
     int block_num = 4 + inode/5;
     int block_index = inode%5;
     char inodebuff[512];
     char db_buff[512];
     char copybuff[512];
-
     block_read(block_num, inodebuff);
     inode_array *inodeptr = (inode_array *)inodebuff;
-
     for(i = offset/512; i < 11; i++)
     {
       
@@ -583,13 +579,10 @@ int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
       if ( ( db_block - 49 ) == -1 ) {
         break;
       }
-
       if ( size < 512 ) {
-
       }
       
       block_read( db_block, db_buff );
-
       if (i == offset/512) {
         if (db_buff[0] == '\0') {
           strncpy( copybuff, db_buff[ offset%512 ], 512 - ( offset%512 ) );
@@ -599,12 +592,8 @@ int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
         strncpy ( copybuff, db_buff, 512 );
         size = size - 512;
       }
-
       strcat( buf, copybuff );
     }
-
-
-
     retstat = pread(fi->fh, buf, size, offset);
     log_msg("buff: %s, retstat: %d", buf, retstat);
     if(retstat < 0)
@@ -628,8 +617,85 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
     log_msg("\nsfs_write(path=\"%s\", buf=0x%08x, size=%d, offset=%lld, fi=0x%08x)\n",
       path, buf, size, offset, fi);
     
+    //finding direntry for file
+    char dir_buf[512];
+    int i,j, inode_num;
+    for(i = 24; i <= 48; i++){
+      block_read(i, dir_buf);
+      direntry_array *direntries = (direntry_array *)dir_buf;
+      for(j = 0; j < 4; j++){
+        if(strcmp(direntries->d[j].name, path) == 0){
+          log_msg("FOUND file to write to\n");
+          inode_num = direntries->d[j].inode_num;
+          j = -1;
+          break;
+        } 
+      }
+      if(j==-1){
+        break;
+      }
+    }
+    log_msg("i: %d j: %d\n", i , j);
+    if(i==49 && j==4){
+      log_msg("ERROR: file to write to not found\n");
+      sfs_create(path, 0, fi);
+    }
+
+    //testing
+    char sb_buf[512];
+    block_read(0, sb_buf);
+    superblock *sb = (superblock *)sb_buf;
+    log_msg("NUM INODES REM before: %d\n",sb->num_inodes);
+
+    int inode_block = inode_num/5 + 4;
+    int inode_block_index = inode_num%5;
+    char inode_buf[512];
+    block_read(inode_block, inode_buf);
+    inode_array *inode_arr = (inode_array *)inode_buf;
+
+    int x;
+    int first_db_block = offset/512;
+    int last_db_block = (offset+size)/512;
+    if ((offset+size)%512 > 0){
+      last_db_block++;
+    }
+    int bytes_written = 0;
+    char db_buf[512];
+    log_msg("inside buf: %s\n", buf);
+    for (x = first_db_block; x<last_db_block; x++){
+      if (inode_arr->i[inode_block_index].db[x] < 0){
+        return bytes_written;
+      }else {
+        block_read(inode_arr->i[inode_block_index].db[x], db_buf);
+        log_msg("before write: READING from i = %d: %s\n", x, db_buf);
+        if(x==first_db_block){
+          strncpy(db_buf+(offset%512), buf, (512 - offset%512));
+          bytes_written += offset%512;
+        } else if(x==last_db_block){
+          strncpy(db_buf, buf+bytes_written, (offset+size)%512);
+          bytes_written += (offset+size)%512;
+        } else{
+          strncpy(db_buf, buf+bytes_written, 512);
+          bytes_written += 512;
+        }
+        block_write(inode_arr->i[inode_block_index].db[x], db_buf);
+      }
+    }
+    block_write(inode_block, inode_buf);
+    log_msg("NUM INODES REM after: %d\n",sb->num_inodes);
+    //testing
+    int y;
+    for(y = 0; y<11; y++){
+      if(inode_arr->i[inode_block_index].db[y] >= 0){
+        block_read(inode_arr->i[inode_block_index].db[y], db_buf);
+        log_msg("READING from i = %d: %s\n", y, db_buf);
+      }
+      else break;
+
+    }
+
     
-    return retstat;
+    return bytes_written;
 }
 
 
