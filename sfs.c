@@ -259,6 +259,7 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     //direntries = (direntry_array *)buf; // direntries is a direntry_array (initialized above)
 
     int i,j;
+    /*
     for(i = 24; i <= 48; i++){
       block_read(i, buf);
       direntry_array *direntries = (direntry_array *)buf;
@@ -269,7 +270,7 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
         } 
       }
     }
-
+*/
     // END TRAVERSING DIRENTRIES
     
     log_msg("now creating file\n");
@@ -422,6 +423,28 @@ int sfs_open(const char *path, struct fuse_file_info *fi)
 
     log_msg("\nsfs_open(path\"%s\", fi=0x%08x)\n",
       path, fi);
+
+    char buf[512];
+    int i,j;
+    for(i = 24; i <= 48; i++){
+      block_read(i, buf);
+      direntry_array *direntries = (direntry_array *)buf;
+      for(j = 0; j < 4; j++){
+        if(strcmp(direntries->d[j].name, path) == 0){
+          log_msg("ERROR: Cannot create file with same name as an existing file.\n");
+          j = -1;
+          break;
+        } 
+      }
+      if(j==-1){
+        break;
+      }
+    }
+    log_msg("i: %d j: %d\n", i , j);
+    if(i==49 && j==4){
+      log_msg("creating file...\n");
+      sfs_create(path, 0, fi);
+    }
     
     //sfs_fullpath(fpath, path);
 
