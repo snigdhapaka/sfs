@@ -62,7 +62,7 @@ typedef struct superblock_struct{
 typedef struct inode_struct{
   int type;//1 if directory, 2 if regular file
   int link_count;//how many hardlinks are pointing to it
-  int size;//size of file in bytes
+  int size_remaining;//number of bytes of remaining space in file
   int mode;//read or write mode?
   int db[11];
 }inode;
@@ -103,10 +103,6 @@ void *sfs_init(struct fuse_conn_info *conn)
     sb.total_num_inodes = 100;
     sb.total_num_datablocks = 1100;
 
-    // block_write(0, &sb);
-    // block_read(0, buf);
-    // superblock *psb = (superblock *)buf;
-
     //filling in the char map (instead of bit map) for inode and data blocks below 
     int i;
     for(i = 0; i < 100; i++){
@@ -134,7 +130,7 @@ void *sfs_init(struct fuse_conn_info *conn)
       for(ii = 0; ii < 5; ii++){
           x.i[ii].type = 0;
           x.i[ii].link_count = 0;
-          x.i[ii].size = 0;
+          x.i[ii].size_remaining = 512*11;
           x.i[ii].mode = 0;
           int d;
           for(d = 0; d <= 11; d++){
@@ -208,7 +204,7 @@ int sfs_getattr(const char *path, struct stat *statbuf)
     log_msg("I was here as a FILE");
     statbuf->st_mode = S_IFREG | 0777;
     statbuf->st_nlink = 1;
-    statbuf->st_size = 1;
+    statbuf->st_size = 0;
     log_msg("\nI am a file called=>  path=\"%s\")\n", path);
   } //else
     //res = -ENOENT;
@@ -240,37 +236,12 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 
     // CHECK if file name already exists
     char buf[512];
-    /* 
-    //test code
-    block_read(0, buf);
-    superblock *sb = (superblock *)buf;
-    char *inode_map_t = sb->inode_map;
-    sb->num_inodes--;
-    inode_map_t[0] = 1;
-    block_write(0, buf);
-
-    block_read(24, buf);
-    direntry_array *direntries = (direntry_array *)buf;
-    strncpy(direntries->d[0].name, "/test", 120);
-    block_write(24, buf);
-*/
     //THIS IS HOW YOU GO THROUGH THE DIRENTRIES
     //block_read(24, buf); // you will need to go through blocks 24-48
     //direntries = (direntry_array *)buf; // direntries is a direntry_array (initialized above)
 
     int i,j;
-    /*
-    for(i = 24; i <= 48; i++){
-      block_read(i, buf);
-      direntry_array *direntries = (direntry_array *)buf;
-      for(j = 0; j < 4; j++){
-        if(strcmp(direntries->d[j].name, path) == 0){
-          log_msg("ERROR: Cannot create file with same name as an existing file.\n");
-          return retstat;
-        } 
-      }
-    }
-*/
+
     // END TRAVERSING DIRENTRIES
     
     log_msg("now creating file\n");
@@ -370,27 +341,6 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     direntry_block->d[direntry_block_index].inode_num = free_inode;
     block_write(direntry_block_num, direntry_buf);
 
-
-    //CHECKING TO SEE IF IT WORKED
-
-
-    /*
-    superblock *ptr = (superblock *)buf;
-    if(ptr->num_inodes > 0 && ptr->num_datablocks > 0){
-      int i, j;
-      for(i = 0; i < sizeof(ptr->inode_map); i++){
-        if(ptr->inode_map[i] == 0){
-          for(j = 0; j < sizeof(ptr->data_map); j++){
-            if(ptr->data_map[j] == 0){
-              memset(buf, 0, 512);
-              block_read(1, buf);
-              inodes *inodesptr = (inodes *)buf;
-            }
-          }
-        }
-      }
-    }
-  */
     block_write(0, sb_buf);
     return retstat;
 }
@@ -527,13 +477,11 @@ int sfs_open(const char *path, struct fuse_file_info *fi)
       log_msg("creating file...\n");
       sfs_create(path, 0, fi);
     }
-    
-    //sfs_fullpath(fpath, path);
 
     fd = open(path, fi->flags);
     log_msg("Did open() work?\n");
     
-    //fd = 1;
+    fd = 1;
     if( fd < 0 ) {
       retstat = sfs_error("sfs_open open");
     }
@@ -565,7 +513,10 @@ int sfs_release(const char *path, struct fuse_file_info *fi)
     log_msg("\nsfs_release(path=\"%s\", fi=0x%08x)\n",
     path, fi);
     
-
+    log_fi(fi);
+    fi->fh = 0;
+    log_msg("This is the fi after setting fi->fh to 0\n");
+    log_fi(fi);
     return retstat;
 }
 
