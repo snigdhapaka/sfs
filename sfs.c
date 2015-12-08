@@ -191,7 +191,7 @@ static void sfs_fullpath(char fpath[PATH_MAX], const char *path)
  */
 int sfs_getattr(const char *path, struct stat *statbuf)
 {
-        int retstat = 0;
+    int retstat = 0;
     char fpath[PATH_MAX];
 
     log_msg("\nsfs_getattr(path=\"%s\", statbuf=0x%08x)\n",
@@ -415,6 +415,7 @@ int sfs_unlink(const char *path)
  */
 int sfs_open(const char *path, struct fuse_file_info *fi)
 {
+    
     int retstat = 0;
     int fd;
     char fpath[120];
@@ -424,10 +425,10 @@ int sfs_open(const char *path, struct fuse_file_info *fi)
     
     //sfs_fullpath(fpath, path);
 
-    fd = open(fpath, fi->flags);
+    fd = open(path, fi->flags);
     log_msg("Did open() work?\n");
     
-    fd = 1;
+    //fd = 1;
     if( fd < 0 ) {
       retstat = sfs_error("sfs_open open");
     }
