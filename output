@@ -1,0 +1,563 @@
+
+sfs_init()
+
+sfs_getattr(path="/", statbuf=0xd7957d10)
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 040777
+    st_nlink = 2
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x5668943b
+    st_ctime = 0x5668943b
+
+sfs_getattr(path="/", statbuf=0xd7957d10)
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 040777
+    st_nlink = 2
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x5668943d
+    st_ctime = 0x5668943d
+
+sfs_opendir(path="/", fi=0xd7957d80)
+
+sfs_readdir(path="/", buf=0xc8000990, filler=0xd8d23170, offset=0, fi=0xd8358d80)
+
+sfs_getattr(path="/test.c", statbuf=0xd7957d40)
+GET ATTR: direntry contents: name=, inode_num=-1
+I was here as a FILE
+I am a file called=>  path="/test.c")
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 0100777
+    st_nlink = 1
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x56689440
+    st_ctime = 0x56689440
+
+sfs_open(path"/test.c", fi=0xd8358e40)
+i: 49 j: 4
+FLAGS: 34817
+creating file...
+SNIGGY SAYS THIS IS THE PATH: /test.c
+sfs_create(path="/test.c", mode=0000, fi=0xd8358e40)
+now creating file
+num free inodes: 100
+free_inode num: 0, val: 0
+FREE INODE: 0
+FREE DATABLOCK: 1, 0
+DATABLOCK_NUM: 0
+INODE USED AT block 4 index 0
+pointer to datablock 0
+WE HAVE A FREE DATABLOCK!!! 0 pointing to 0
+DIRENTRY USED AT block 24 index 0
+Do we get here??Did open() work?
+    fi:
+    flags = 0x00008801
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0x0000000000000001
+    lock_owner = 0x0000000000000000
+
+sfs_release(path="/test.c", fi=0xd8358e40)
+
+sfs_getattr(path="/test.c", statbuf=0xd7957d40)
+GET ATTR: direntry contents: name=, inode_num=-1
+I was here as a FILE
+I am a file called=>  path="/test.c")
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 0100777
+    st_nlink = 1
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x5668944b
+    st_ctime = 0x5668944b
+
+sfs_open(path"/test.c", fi=0xd8358e40)
+ERROR: Cannot create file with same name as an existing file.
+i: 24 j: -1
+Did open() work?
+    fi:
+    flags = 0x00008401
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0x0000000000000001
+    lock_owner = 0x0000000000000000
+
+sfs_write(path="/test.c", buf=0xd910a060, size=5, offset=0, fi=0xd7957e40)
+FOUND file to write to
+i: 24 j: -1
+NUM INODES REM before: 99
+size: 5, offset: 0, first: 0, last: 1
+size: 5
+READING from i = 0, db = 49: thise thisktouch test.ctouch test.ctouch test.ctouch test.ctouch test.c
+
+sfs_release(path="/test.c", fi=0xd8358e40)
+
+sfs_getattr(path="/test.c", statbuf=0xd7957d40)
+GET ATTR: direntry contents: name=, inode_num=-1
+I was here as a FILE
+I am a file called=>  path="/test.c")
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 0100777
+    st_nlink = 1
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x5668944e
+    st_ctime = 0x5668944e
+
+sfs_open(path"/test.c", fi=0xd8358e40)
+ERROR: Cannot create file with same name as an existing file.
+i: 24 j: -1
+Did open() work?
+    fi:
+    flags = 0x00008000
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0x0000000000000001
+    lock_owner = 0x0000000000000000
+
+sfs_read(path="/test.c", buf=0xc8000bd0, size=4096, offset=0, fi=0xd7957e40)
+BUF SIZE: 8
+FOUND file to read from
+i: 24 j: 0
+READING from file now:
+Inode block num: 4, inode index num: 0
+LOOK HERE: first_db_block: 0
+LOOK HERE: last_db_block: 8
+LOOK HERE: 0last_db_block: 8
+inside buf: 
+LOOK HERE: x: 0
+Snig: READING from i = 49: thise thisktouch test.ctouch test.ctouch test.ctouch test.ctouch test.c
+LOOK HERE: I am in the first block x: 0
+LOOK HERE: bytes_read 71
+LOOK HERE: x: 1
+LOOK HERE: <0bytes_read 71
+LOOK HERE: bytes_read before strcat buf with null term 71
+BUF AFTER: thise thisktouch test.ctouch test.ctouch test.ctouch test.ctouch test.c, length: 8
+sfs_release(path="/test.c", fi=0xd8358e40)
+
+sfs_getattr(path="/", statbuf=0xd7957d10)
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 040777
+    st_nlink = 2
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x56689450
+    st_ctime = 0x56689450
+snigdha$ cd mountdir/
+snigdha$ echo "hello, its me" >> try1.c
+snigdha$ ls -l
+total 0
+-rwxrwxrwx 1 root root 0 Dec  9 15:53 test.c
+-rwxrwxrwx 1 root root 0 Dec  9 15:53 try1.c
+snigdha$ cat try1.c
+snigdha$ cat ../sfs.log
+
+sfs_init()
+
+sfs_getattr(path="/", statbuf=0xd7957d10)
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 040777
+    st_nlink = 2
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x5668943b
+    st_ctime = 0x5668943b
+
+sfs_getattr(path="/", statbuf=0xd7957d10)
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 040777
+    st_nlink = 2
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x5668943d
+    st_ctime = 0x5668943d
+
+sfs_opendir(path="/", fi=0xd7957d80)
+
+sfs_readdir(path="/", buf=0xc8000990, filler=0xd8d23170, offset=0, fi=0xd8358d80)
+
+sfs_getattr(path="/test.c", statbuf=0xd7957d40)
+GET ATTR: direntry contents: name=, inode_num=-1
+I was here as a FILE
+I am a file called=>  path="/test.c")
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 0100777
+    st_nlink = 1
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x56689440
+    st_ctime = 0x56689440
+
+sfs_open(path"/test.c", fi=0xd8358e40)
+i: 49 j: 4
+FLAGS: 34817
+creating file...
+SNIGGY SAYS THIS IS THE PATH: /test.c
+sfs_create(path="/test.c", mode=0000, fi=0xd8358e40)
+now creating file
+num free inodes: 100
+free_inode num: 0, val: 0
+FREE INODE: 0
+FREE DATABLOCK: 1, 0
+DATABLOCK_NUM: 0
+INODE USED AT block 4 index 0
+pointer to datablock 0
+WE HAVE A FREE DATABLOCK!!! 0 pointing to 0
+DIRENTRY USED AT block 24 index 0
+Do we get here??Did open() work?
+    fi:
+    flags = 0x00008801
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0x0000000000000001
+    lock_owner = 0x0000000000000000
+
+sfs_release(path="/test.c", fi=0xd8358e40)
+
+sfs_getattr(path="/test.c", statbuf=0xd7957d40)
+GET ATTR: direntry contents: name=, inode_num=-1
+I was here as a FILE
+I am a file called=>  path="/test.c")
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 0100777
+    st_nlink = 1
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x5668944b
+    st_ctime = 0x5668944b
+
+sfs_open(path"/test.c", fi=0xd8358e40)
+ERROR: Cannot create file with same name as an existing file.
+i: 24 j: -1
+Did open() work?
+    fi:
+    flags = 0x00008401
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0x0000000000000001
+    lock_owner = 0x0000000000000000
+
+sfs_write(path="/test.c", buf=0xd910a060, size=5, offset=0, fi=0xd7957e40)
+FOUND file to write to
+i: 24 j: -1
+NUM INODES REM before: 99
+size: 5, offset: 0, first: 0, last: 1
+size: 5
+READING from i = 0, db = 49: thise thisktouch test.ctouch test.ctouch test.ctouch test.ctouch test.c
+
+sfs_release(path="/test.c", fi=0xd8358e40)
+
+sfs_getattr(path="/test.c", statbuf=0xd7957d40)
+GET ATTR: direntry contents: name=, inode_num=-1
+I was here as a FILE
+I am a file called=>  path="/test.c")
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 0100777
+    st_nlink = 1
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x5668944e
+    st_ctime = 0x5668944e
+
+sfs_open(path"/test.c", fi=0xd8358e40)
+ERROR: Cannot create file with same name as an existing file.
+i: 24 j: -1
+Did open() work?
+    fi:
+    flags = 0x00008000
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0x0000000000000001
+    lock_owner = 0x0000000000000000
+
+sfs_read(path="/test.c", buf=0xc8000bd0, size=4096, offset=0, fi=0xd7957e40)
+BUF SIZE: 8
+FOUND file to read from
+i: 24 j: 0
+READING from file now:
+Inode block num: 4, inode index num: 0
+LOOK HERE: first_db_block: 0
+LOOK HERE: last_db_block: 8
+LOOK HERE: 0last_db_block: 8
+inside buf: 
+LOOK HERE: x: 0
+Snig: READING from i = 49: thise thisktouch test.ctouch test.ctouch test.ctouch test.ctouch test.c
+LOOK HERE: I am in the first block x: 0
+LOOK HERE: bytes_read 71
+LOOK HERE: x: 1
+LOOK HERE: <0bytes_read 71
+LOOK HERE: bytes_read before strcat buf with null term 71
+BUF AFTER: thise thisktouch test.ctouch test.ctouch test.ctouch test.ctouch test.c, length: 8
+sfs_release(path="/test.c", fi=0xd8358e40)
+
+sfs_getattr(path="/", statbuf=0xd7957d10)
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 040777
+    st_nlink = 2
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x56689450
+    st_ctime = 0x56689450
+
+sfs_getattr(path="/", statbuf=0xd8358d10)
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 040777
+    st_nlink = 2
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x566894ae
+    st_ctime = 0x566894ae
+
+sfs_getattr(path="/try1.c", statbuf=0xd7957d40)
+GET ATTR: direntry contents: name=/test.c, inode_num=0
+I was here as a FILE
+I am a file called=>  path="/try1.c")
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 0100777
+    st_nlink = 1
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x566894cc
+    st_ctime = 0x566894cc
+
+sfs_open(path"/try1.c", fi=0xd8358e40)
+i: 49 j: 4
+FLAGS: 33793
+creating file...
+SNIGGY SAYS THIS IS THE PATH: /try1.c
+sfs_create(path="/try1.c", mode=0000, fi=0xd8358e40)
+now creating file
+num free inodes: 99
+free_inode num: 0, val: 1
+free_inode num: 1, val: 0
+FREE INODE: 1
+FREE DATABLOCK: 1, 1
+DATABLOCK_NUM: 1
+INODE USED AT block 4 index 1
+pointer to datablock 1
+WE HAVE A FREE DATABLOCK!!! 0 pointing to 1
+DIRENTRY USED AT block 24 index 1
+Do we get here??Did open() work?
+    fi:
+    flags = 0x00008401
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0x0000000000000001
+    lock_owner = 0x0000000000000000
+
+sfs_write(path="/try1.c", buf=0xd910a060, size=14, offset=0, fi=0xd7957e40)
+FOUND file to write to
+i: 24 j: -1
+NUM INODES REM before: 98
+size: 14, offset: 0, first: 0, last: 1
+size: 14
+READING from i = 0, db = 50: hello, its me
+
+sfs_release(path="/try1.c", fi=0xd8358e40)
+
+sfs_opendir(path="/", fi=0xd7957d80)
+
+sfs_readdir(path="/", buf=0xc8000990, filler=0xd8d23170, offset=0, fi=0xd8358d80)
+
+sfs_getattr(path="/test.c", statbuf=0xd7957d40)
+GET ATTR: direntry contents: name=/try1.c, inode_num=1
+I was here as a FILE
+I am a file called=>  path="/test.c")
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 0100777
+    st_nlink = 1
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x566894ce
+    st_ctime = 0x566894ce
+
+sfs_getattr(path="/try1.c", statbuf=0xd8358d40)
+GET ATTR: direntry contents: name=/test.c, inode_num=0
+I was here as a FILE
+I am a file called=>  path="/try1.c")
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 0100777
+    st_nlink = 1
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x566894ce
+    st_ctime = 0x566894ce
+
+sfs_getattr(path="/try1.c", statbuf=0xd7957d40)
+GET ATTR: direntry contents: name=/test.c, inode_num=0
+I was here as a FILE
+I am a file called=>  path="/try1.c")
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 0100777
+    st_nlink = 1
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x566894d1
+    st_ctime = 0x566894d1
+
+sfs_open(path"/try1.c", fi=0xd8358e40)
+ERROR: Cannot create file with same name as an existing file.
+i: 24 j: -1
+Did open() work?
+    fi:
+    flags = 0x00008000
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0x0000000000000001
+    lock_owner = 0x0000000000000000
+
+sfs_read(path="/try1.c", buf=0xc8000c60, size=4096, offset=0, fi=0xd7957e40)
+BUF SIZE: 8
+FOUND file to read from
+i: 24 j: 1
+READING from file now:
+Inode block num: 4, inode index num: 1
+LOOK HERE: first_db_block: 0
+LOOK HERE: last_db_block: 8
+LOOK HERE: 0last_db_block: 8
+inside buf: /try1.c
+LOOK HERE: x: 0
+Snig: READING from i = 50: hello, its me
+LOOK HERE: I am in the first block x: 0
+LOOK HERE: bytes_read 13
+LOOK HERE: x: 1
+LOOK HERE: <0bytes_read 13
+LOOK HERE: bytes_read before strcat buf with null term 13
+BUF AFTER: hello, its me, length: 8
