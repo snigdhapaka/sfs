@@ -234,10 +234,10 @@ int sfs_getattr(const char *path, struct stat *statbuf)
         direntry_array *pde = (direntry_array *)buff;
         for(i = 0; i < 4; i++) {
           //log_msg("GET ATTR: direntry contents: name=%s, inode_num=%d\n", pde->d[i].name, pde->d[i].inode_num);
-          //if( pde->d[i].name[0] == '\0' ){  
-            //continue;
-          //}
-          if(strcmp(path, pde->d[i].name)){
+          if( pde->d[i].name[0] == '\0' ){  
+            continue;
+          }
+          if(strcmp(path, pde->d[i].name)){//problem here, this should not be equal
             log_msg("GET ATTR: direntry contents: name=%s, inode_num=%d\n", pde->d[i].name, pde->d[i].inode_num);
             log_msg("I was here as a FILE");
             statbuf->st_mode = S_IFREG | 0777;
@@ -386,9 +386,10 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     strncpy(direntry_block->d[direntry_block_index].name, path, 120);
     direntry_block->d[direntry_block_index].inode_num = free_inode;
     block_write(direntry_block_num, direntry_buf);
-    log_msg("Do we get here??");
+    log_msg("Do we get here??\n");
     block_write(0, sb_buf);
-    mode = S_IFREG | 0777;
+    mode = S_IFREG | 0777;//check this again
+    log_msg("or here?\n");
     return retstat;
 }
 
@@ -590,9 +591,10 @@ int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
     int retstat = 0;
     log_msg("\nsfs_read(path=\"%s\", buf=0x%08x, size=%d, offset=%lld, fi=0x%08x)\n",
       path, buf, size, offset, fi);
-    log_msg("BUF BEFORE: %s\n", buf);
-    memset( buf, '\0' , sizeof(buf) );
-    log_msg("BUF AFTER: %s\n", buf);
+    //log_msg("BUF BEFORE: %s\n", buf);
+    //memset( buf, '\0' , sizeof(buf));
+    //log_msg("BUF AFTER: %s\n", buf);
+    log_msg("BUF SIZE: %d\n", sizeof(buf));
     //log_fi(fi);
 
 
@@ -638,8 +640,9 @@ int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
 
     if ((offset+size)%512 > 0){
       last_db_block++;
+      log_msg("LOOK HERE: 0last_db_block: %d\n", last_db_block);
     }
-    log_msg("LOOK HERE: 0last_db_block: %d\n", last_db_block);
+    
     int bytes_read = 0;
     char db_buf[512];
     memset(db_buf, '\0', 512);
@@ -677,7 +680,7 @@ int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
     //const char src[11] = "0123456789\0";
     //memcpy(buf, src, strlen(src)+1);
     //pread(fi->fh, buf, size, offset);
-    log_msg("BUF AFTER: %s, length: %d", buf, sizeof(buf));
+    log_msg("BUF AFTER: %s, length: %d", buf, sizeof(&buf));
     //bytes_read++;
     return bytes_read * sizeof(char);
     //return 17*sizeof(char);
@@ -936,7 +939,9 @@ int sfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
       path, buf, filler, offset, fi);
 
     char buff[512];
+    log_msg("Before memset: buff size: %d, buff contents: %s", sizeof(buff), buff);
     memset(buff, 0, sizeof(char)*512);
+    log_msg("AFTER: buff size: %d, buff contents: %s", sizeof(buff), buff);
     //block_read(6, &buff);
     //char readbuff[124];
     int i, j, h;
@@ -953,9 +958,10 @@ int sfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
       direntry_array *pde = (direntry_array *)buff;
       for(i = 0; i < 4; i++)
       {
-        //log_msg("direntry contents: name=%s, inode_num=%d\n", pde->d[i].name, pde->d[i].inode_num);
+        log_msg("direntry contents: name=%s, inode_num=%d\n", pde->d[i].name, pde->d[i].inode_num);
         if( pde->d[i].name[0] == '\0' )
         {
+          log_msg("direntry entry no contents: char: %c\n", pde->d[i].name[0]);
           continue;
         }
         char *pChar = malloc(sizeof(char)*120);
