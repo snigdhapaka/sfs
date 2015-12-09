@@ -680,7 +680,7 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
     char db_buf_cp[512];
     //log_msg("inside buf: %s\n", buf);
     log_msg("size: %d, offset: %d, first: %d, last: %d\n", size, offset, first_db_block, last_db_block);
-    for (x = first_db_block; x<last_db_block-1; x++){
+    for (x = first_db_block; x<last_db_block; x++){
       if (inode_arr->i[inode_block_index].db[x] < 0){
         int data_block = -1;
         int data_index = -1;
@@ -750,10 +750,15 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
             strncpy(db_buf_cp, db_buf, 512);
             strncpy(db_buf_cp, buf+bytes_written, (offset+size)%512-1);
           }else{
+            //log_msg("here, bytes_written: %d, rem offset: %d\n", bytes_written, (offset+size)%512-1);
+            //log_msg("INSIDE db_buf: %s\n**************\n\n", db_buf);
+            //log_msg("BEFORE db_buf: %s\n**************\n\n", db_buf_cp);
+            //log_msg("COPYING: %s\n**************\n\n", buf+bytes_written);
+            strncpy(db_buf_cp, db_buf, 512);
             strncpy(db_buf_cp, buf+bytes_written, (offset+size)%512-1);
             bytes_written += (offset+size)%512-1;
             //log_msg("AFTER: db_buf: %s\n**************\n\n\n", db_buf_cp);
-            strncpy(db_buf_cp+(offset+size)%512, db_buf+(offset+size)%512-1, 512-size-offset%512+1);
+            //strncpy(db_buf_cp+(offset+size)%512-1, db_buf+(offset+size)%512-1, 512-size-offset%512+1);
           }
         }else {
           strncpy(db_buf_cp, buf+bytes_written, (offset+size)%512);
