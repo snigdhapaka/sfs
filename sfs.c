@@ -488,8 +488,15 @@ int sfs_open(const char *path, struct fuse_file_info *fi)
     }
     log_msg("i: %d j: %d\n", i , j);
     if(i==49 && j==4){
-      log_msg("creating file...\n");
-      sfs_create(path, 0, fi);
+      log_msg("FLAGS: %d\n", fi->flags);
+      if((int)fi->flags == 34817){
+        log_msg("creating file...\n");
+        sfs_create(path, 0, fi);
+      }
+      else{
+        log_msg("ERROR: CANNOT CREATE FILE\n");
+        return retstat;
+      }
     }
 
     fd = open(path, fi->flags);
@@ -551,6 +558,9 @@ int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
     log_msg("\nsfs_read(path=\"%s\", buf=0x%08x, size=%d, offset=%lld, fi=0x%08x)\n",
       path, buf, size, offset, fi);
     log_fi(fi);
+    buf = "hello world";
+    log_msg("HELLO WORLD: %s\n", buf);
+    return 12;
     /*
     //get file name from path (aka remove the slash in front at the very least)
     char * file_name;
