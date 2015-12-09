@@ -745,7 +745,7 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
         }
       } else if(x==last_db_block-1){
         if((offset+size)%512 < 512){
-          log_msg("here\n");
+          //log_msg("here\n");
           if(size == 4096){
             strncpy(db_buf_cp, db_buf, 512);
             strncpy(db_buf_cp, buf+bytes_written, (offset+size)%512-1);
@@ -754,17 +754,19 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
             //log_msg("INSIDE db_buf: %s\n**************\n\n", db_buf);
             //log_msg("BEFORE db_buf: %s\n**************\n\n", db_buf_cp);
             //log_msg("COPYING: %s\n**************\n\n", buf+bytes_written);
-            strncpy(db_buf_cp, db_buf, 512);
+            //strncpy(db_buf_cp, db_buf, 512);
             strncpy(db_buf_cp, buf+bytes_written, (offset+size)%512-1);
-            bytes_written += (offset+size)%512-1;
-            //log_msg("AFTER: db_buf: %s\n**************\n\n\n", db_buf_cp);
-            //strncpy(db_buf_cp+(offset+size)%512-1, db_buf+(offset+size)%512-1, 512-size-offset%512+1);
+            //log_msg("why is it: %s\n", db_buf);
+            //log_msg("curr db: %s\n", db_buf_cp);
+            bytes_written += (offset+size)%512;
+            //log_msg("adding: db_buf: %s\n**************\n\n\n", db_buf+(offset+size)%512-1);
+            strncpy(db_buf_cp+(offset+size)%512-1, db_buf+(offset+size)%512-1, 512-(size+offset)%512-1);
           }
         }else {
           strncpy(db_buf_cp, buf+bytes_written, (offset+size)%512);
           bytes_written += (offset+size)%512;
           strncpy(db_buf_cp+((offset+size)%512), buf+bytes_written, 512 - (offset+size)%512);
-          log_msg("last written: %d\n", bytes_written);
+          //log_msg("last written: %d\n", bytes_written);
         }
       } else{
         //log_msg("putting in datablock %d: %s\n", x, buf+bytes_written);
@@ -775,7 +777,7 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
     
     }
     block_write(inode_block, inode_buf);
-    log_msg("NUM INODES REM after: %d\n",sb->num_inodes);
+    //log_msg("NUM INODES REM after: %d\n",sb->num_inodes);
     //testing
     int y;
     for(y = 0; y<11; y++){
@@ -788,7 +790,7 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
 
     }
 
-    memset(buf, '\0', size);
+    memset(buf, '\0', size+1);
     return bytes_written;
 }
 
