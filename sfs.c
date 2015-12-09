@@ -654,6 +654,7 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
           break;
         } 
       }
+      block_write(i, dir_buf);
       if(j==-1){
         break;
       }
@@ -662,6 +663,24 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
     if(i==49 && j==4){
       log_msg("ERROR: file to write to not found\n");
       sfs_create(path, 0, fi);
+      // for testing (reads)
+      for(i = 24; i <= 48; i++){
+        block_read(i, dir_buf);
+        direntry_array *direntries = (direntry_array *)dir_buf;
+        for(j = 0; j < 4; j++){
+          if(strcmp(direntries->d[j].name, path) == 0){
+            log_msg("FOUND file to write to\n");
+            inode_num = direntries->d[j].inode_num;
+            j = -1;
+            break;
+          } 
+        }
+        block_write(i, dir_buf);
+        if(j==-1){
+          break;
+        }
+      }
+      // end test
     }
 
     //testing
@@ -669,6 +688,8 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
     block_read(0, sb_buf);
     superblock *sb = (superblock *)sb_buf;
     log_msg("NUM INODES REM before: %d\n",sb->num_inodes);
+    block_write(0, sb);
+    // end test
 
     int inode_block = inode_num/5 + 4;
     int inode_block_index = inode_num%5;
@@ -719,6 +740,7 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
                 break;
               }
               datablock_num++;
+              log_msg("LINE 723: db = %d is now %d\n", inode_arr->i[inode_block_index].db[x], datablock_num);
               inode_arr->i[inode_block_index].db[x] = datablock_num;
               //log_msg("getting datablock num: %d\n", inode_arr->i[inode_block_index].db[x]);
             }
@@ -736,6 +758,7 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
           log_msg("*ERROR: NO FREE DATA BLOCKS <should never reach this error case>\n");
         }
       }
+
       memset(db_buf, '\0', 512);
       //log_msg("db: %d\n", inode_arr->i[inode_block_index].db[x]);
       block_read(inode_arr->i[inode_block_index].db[x] + 49, db_buf);
@@ -760,16 +783,8 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
             strncpy(db_buf_cp, db_buf, 512);
             strncpy(db_buf_cp, buf+bytes_written, (offset+size)%512-1);
           }else{
-            //log_msg("here, bytes_written: %d, rem offset: %d\n", bytes_written, (offset+size)%512-1);
-            //log_msg("INSIDE db_buf: %s\n**************\n\n", db_buf);
-            //log_msg("BEFORE db_buf: %s\n**************\n\n", db_buf_cp);
-            //log_msg("COPYING: %s\n**************\n\n", buf+bytes_written);
-            //strncpy(db_buf_cp, db_buf, 512);
             strncpy(db_buf_cp, buf+bytes_written, (offset+size)%512-1);
-            //log_msg("why is it: %s\n", db_buf);
-            //log_msg("curr db: %s\n", db_buf_cp);
             bytes_written += (offset+size)%512;
-            //log_msg("adding: db_buf: %s\n**************\n\n\n", db_buf+(offset+size)%512-1);
             strncpy(db_buf_cp+(offset+size)%512-1, db_buf+(offset+size)%512-1, 512-(size+offset)%512-1);
           }
         }else {
@@ -788,7 +803,8 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
     }
     block_write(inode_block, inode_buf);
     //log_msg("NUM INODES REM after: %d\n",sb->num_inodes);
-    //testing
+    
+    //testing (reads)
     int y;
     for(y = 0; y<11; y++){
       if(inode_arr->i[inode_block_index].db[y] >= 0){
@@ -799,8 +815,8 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
       else break;
 
     }
+    // end test
 
-    memset(buf, '\0', size+1);
     return bytes_written;
 }
 
