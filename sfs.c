@@ -165,6 +165,19 @@ void *sfs_init(struct fuse_conn_info *conn)
 void sfs_destroy(void *userdata)
 {
     log_msg("about to close disk\n");  
+    int i, j;
+    char data_map_buf[512];
+    for(i = 1; i<=3; i++){
+      block_read(i, data_map_buf);
+      for(j = 0; j<267; j++){
+        if(data_map_buf[j] == 1){
+          char data_block_buf[512];
+          block_read(j+49, data_block_buf);
+          memset(data_block_buf, '\0', 512);
+          block_write(j+49, data_block_buf);
+        }
+      }
+    }
     disk_close();
     log_msg("\nsfs_destroy(userdata=0x%08x)\n", userdata);
 }
@@ -659,27 +672,102 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
     if ((offset+size)%512 > 0){
       last_db_block++;
     }
+    if (last_db_block > 11){
+      last_db_block = 11;
+    }
     int bytes_written = 0;
     char db_buf[512];
-    log_msg("inside buf: %s\n", buf);
-    for (x = first_db_block; x<last_db_block; x++){
+    char db_buf_cp[512];
+    //log_msg("inside buf: %s\n", buf);
+    log_msg("size: %d, offset: %d, first: %d, last: %d\n", size, offset, first_db_block, last_db_block);
+    for (x = first_db_block; x<last_db_block-1; x++){
       if (inode_arr->i[inode_block_index].db[x] < 0){
-        return bytes_written;
-      }else {
-        block_read(inode_arr->i[inode_block_index].db[x], db_buf);
-        log_msg("before write: READING from i = %d: %s\n", x, db_buf);
-        if(x==first_db_block){
-          strncpy(db_buf+(offset%512), buf, (512 - offset%512));
-          bytes_written += offset%512;
-        } else if(x==last_db_block){
-          strncpy(db_buf, buf+bytes_written, (offset+size)%512);
-          bytes_written += (offset+size)%512;
-        } else{
-          strncpy(db_buf, buf+bytes_written, 512);
-          bytes_written += 512;
+        int data_block = -1;
+        int data_index = -1;
+        int datablock_num = 0;
+        int done = 0;
+        char data_buf[512];
+        if(sb->num_datablocks > 0){
+          //log_msg("num free datablocks: %d\n", sb_buf->num_datablocks);
+          for(data_block = 1; data_block <= 3; data_block++){
+            block_read(data_block, data_buf);
+            char *data_map = (char *)data_buf;
+            for(data_index = 0; data_index < 367; data_index++){
+              if(data_map[data_index] == 0){
+                //WE HAVE A FREE DATA BLOCK;
+                log_msg("FREE DATABLOCK: %d, %d\n", data_block, data_index);
+                //clean and reset data block (just in case)
+                char set_block[512];
+                block_read(datablock_num, set_block);
+                memset(set_block, '\0', 512);
+                block_write(datablock_num, set_block);
+
+                sb->num_datablocks--;
+                data_map[data_index] = 1;
+                block_write(data_block, data_buf);
+                done = 1;
+                break;
+              }
+              datablock_num++;
+              inode_arr->i[inode_block_index].db[x] = datablock_num;
+              //log_msg("getting datablock num: %d\n", inode_arr->i[inode_block_index].db[x]);
+            }
+            if(done == 1){
+              break;
+            } else if(data_block == 3 && data_index == 366){
+              //NO FREE DATA BLOCK
+              block_write(data_block, data_buf);
+              log_msg("*ERROR: NO FREE DATA BLOCKS <should never reach this error case>\n");
+            }
+          }
         }
-        block_write(inode_arr->i[inode_block_index].db[x], db_buf);
+        else{
+          block_write(data_block, data_buf);
+          log_msg("*ERROR: NO FREE DATA BLOCKS <should never reach this error case>\n");
+        }
       }
+      memset(db_buf, '\0', 512);
+      //log_msg("db: %d\n", inode_arr->i[inode_block_index].db[x]);
+      block_read(inode_arr->i[inode_block_index].db[x] + 49, db_buf);
+      memset(db_buf_cp, '\0', 512);
+      //log_msg("before write: READING from i = %d: %s\n\n\n", x, db_buf);
+      if(x==first_db_block){
+        strncpy(db_buf_cp, db_buf, (offset%512));
+        if(size > (512 - offset%512)){
+          strncpy(db_buf_cp+(offset%512), buf, (512 - offset%512));
+          bytes_written += 512 - offset%512;
+        } else if(size > 0){
+          log_msg("size: %d\n", size);
+          strncpy(db_buf_cp+(offset%512), buf, size);
+          strncpy(db_buf_cp+size+(offset%512)-1, db_buf+size-1, 512-size-offset%512+2);
+          //log_msg("db_buf+size: %s\n", db_buf+size);
+          bytes_written += size;
+        }
+      } else if(x==last_db_block-1){
+        if((offset+size)%512 < 512){
+          log_msg("here\n");
+          if(size == 4096){
+            strncpy(db_buf_cp, db_buf, 512);
+            strncpy(db_buf_cp, buf+bytes_written, (offset+size)%512-1);
+          }else{
+            strncpy(db_buf_cp, buf+bytes_written, (offset+size)%512-1);
+            bytes_written += (offset+size)%512-1;
+            //log_msg("AFTER: db_buf: %s\n**************\n\n\n", db_buf_cp);
+            strncpy(db_buf_cp+(offset+size)%512, db_buf+(offset+size)%512-1, 512-size-offset%512+1);
+          }
+        }else {
+          strncpy(db_buf_cp, buf+bytes_written, (offset+size)%512);
+          bytes_written += (offset+size)%512;
+          strncpy(db_buf_cp+((offset+size)%512), buf+bytes_written, 512 - (offset+size)%512);
+          log_msg("last written: %d\n", bytes_written);
+        }
+      } else{
+        //log_msg("putting in datablock %d: %s\n", x, buf+bytes_written);
+        strncpy(db_buf_cp, buf+bytes_written, 512);
+        bytes_written += 512;
+      }
+      block_write(inode_arr->i[inode_block_index].db[x] + 49, db_buf_cp);
+    
     }
     block_write(inode_block, inode_buf);
     log_msg("NUM INODES REM after: %d\n",sb->num_inodes);
@@ -687,14 +775,15 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
     int y;
     for(y = 0; y<11; y++){
       if(inode_arr->i[inode_block_index].db[y] >= 0){
-        block_read(inode_arr->i[inode_block_index].db[y], db_buf);
-        log_msg("READING from i = %d: %s\n", y, db_buf);
+        block_read(inode_arr->i[inode_block_index].db[y] + 49, db_buf);
+        log_msg("READING from i = %d, db = %d: %s\n", y, inode_arr->i[inode_block_index].db[y] + 49, db_buf);
+        block_write(inode_arr->i[inode_block_index].db[y] + 49, db_buf);
       }
       else break;
 
     }
 
-    
+    memset(buf, '\0', size);
     return bytes_written;
 }
 
