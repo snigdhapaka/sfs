@@ -185,7 +185,20 @@ void *sfs_init(struct fuse_conn_info *conn)
  */
 void sfs_destroy(void *userdata)
 {
-    //log_msg("about to close disk\n");  
+    log_msg("about to close disk\n");  
+    int i, j;
+    char data_map_buf[512];
+    for(i = 1; i<=3; i++){
+      block_read(i, data_map_buf);
+      for(j = 0; j<267; j++){
+        if(data_map_buf[j] == 1){
+          char data_block_buf[512];
+          block_read(j+49, data_block_buf);
+          memset(data_block_buf, '\0', 512);
+          block_write(j+49, data_block_buf);
+        }
+      }
+    }
     disk_close();
     log_msg("\nsfs_destroy(userdata=0x%08x)\n", userdata);
 }
@@ -235,9 +248,9 @@ int sfs_getattr(const char *path, struct stat *statbuf)
         for(i = 0; i < 4; i++) {
           //log_msg("GET ATTR: direntry contents: name=%s, inode_num=%d\n", pde->d[i].name, pde->d[i].inode_num);
           //if( pde->d[i].name[0] == '\0' ){  
-            //continue;
+          //  continue;
           //}
-          if(strcmp(path, pde->d[i].name)){
+          if(strcmp(path, pde->d[i].name)==0){//problem here, this should not be equal: good now
             log_msg("GET ATTR: direntry contents: name=%s, inode_num=%d\n", pde->d[i].name, pde->d[i].inode_num);
             log_msg("I was here as a FILE");
             statbuf->st_mode = S_IFREG | 0777;
@@ -386,9 +399,10 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     strncpy(direntry_block->d[direntry_block_index].name, path, 120);
     direntry_block->d[direntry_block_index].inode_num = free_inode;
     block_write(direntry_block_num, direntry_buf);
-    log_msg("Do we get here??");
+    log_msg("Do we get here??\n");
     block_write(0, sb_buf);
-    mode = S_IFREG | 0777;
+    mode = S_IFREG | 0777;//check this again
+    log_msg("or here?\n");
     return retstat;
 }
 
@@ -590,9 +604,10 @@ int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
     int retstat = 0;
     log_msg("\nsfs_read(path=\"%s\", buf=0x%08x, size=%d, offset=%lld, fi=0x%08x)\n",
       path, buf, size, offset, fi);
-    log_msg("BUF BEFORE: %s\n", buf);
-    memset( buf, '\0' , sizeof(buf) );
-    log_msg("BUF AFTER: %s\n", buf);
+    //log_msg("BUF BEFORE: %s\n", buf);
+    //memset( buf, '\0' , sizeof(buf));
+    //log_msg("BUF AFTER: %s\n", buf);
+    log_msg("BUF SIZE: %d\n", sizeof(buf));
     //log_fi(fi);
 
 
@@ -633,13 +648,15 @@ int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
     int x;
     int first_db_block = offset/512;
     log_msg("LOOK HERE: first_db_block: %d\n", first_db_block);
+    log_msg("offset: %d, size: %d\n", offset, size);
     int last_db_block = (offset+size)/512;
     log_msg("LOOK HERE: last_db_block: %d\n", last_db_block);
 
     if ((offset+size)%512 > 0){
       last_db_block++;
+      log_msg("LOOK HERE: 0last_db_block: %d\n", last_db_block);
     }
-    log_msg("LOOK HERE: 0last_db_block: %d\n", last_db_block);
+    
     int bytes_read = 0;
     char db_buf[512];
     memset(db_buf, '\0', 512);
@@ -672,14 +689,14 @@ int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
       }
     }
     log_msg("LOOK HERE: bytes_read before strcat buf with null term %d\n", bytes_read);
-    strcat(buf+bytes_read, "\0");
+    //strcat(buf+bytes_read, "\0");
     
     //const char src[11] = "0123456789\0";
     //memcpy(buf, src, strlen(src)+1);
     //pread(fi->fh, buf, size, offset);
-    log_msg("BUF AFTER: %s, length: %d", buf, sizeof(buf));
+    log_msg("BUF AFTER: %s, length: %d", buf, sizeof(&buf));
     //bytes_read++;
-    return bytes_read * sizeof(char);
+    return bytes_read;
     //return 17*sizeof(char);
 }
 
@@ -712,6 +729,7 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
           break;
         } 
       }
+      block_write(i, dir_buf);
       if(j==-1){
         break;
       }
@@ -720,6 +738,24 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
     if(i==49 && j==4){
       log_msg("ERROR: file to write to not found\n");
       sfs_create(path, 0, fi);
+      // for testing (reads)
+      for(i = 24; i <= 48; i++){
+        block_read(i, dir_buf);
+        direntry_array *direntries = (direntry_array *)dir_buf;
+        for(j = 0; j < 4; j++){
+          if(strcmp(direntries->d[j].name, path) == 0){
+            log_msg("FOUND file to write to\n");
+            inode_num = direntries->d[j].inode_num;
+            j = -1;
+            break;
+          } 
+        }
+        block_write(i, dir_buf);
+        if(j==-1){
+          break;
+        }
+      }
+      // end test
     }
 
     //testing
@@ -727,6 +763,8 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
     block_read(0, sb_buf);
     superblock *sb = (superblock *)sb_buf;
     log_msg("NUM INODES REM before: %d\n",sb->num_inodes);
+    block_write(0, sb);
+    // end test
 
     int inode_block = inode_num/5 + 4;
     int inode_block_index = inode_num%5;
@@ -777,6 +815,7 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
                 break;
               }
               datablock_num++;
+              log_msg("LINE 723: db = %d is now %d\n", inode_arr->i[inode_block_index].db[x], datablock_num);
               inode_arr->i[inode_block_index].db[x] = datablock_num;
               //log_msg("getting datablock num: %d\n", inode_arr->i[inode_block_index].db[x]);
             }
@@ -794,6 +833,7 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
           log_msg("*ERROR: NO FREE DATA BLOCKS <should never reach this error case>\n");
         }
       }
+
       memset(db_buf, '\0', 512);
       //log_msg("db: %d\n", inode_arr->i[inode_block_index].db[x]);
       block_read(inode_arr->i[inode_block_index].db[x] + 49, db_buf);
@@ -818,16 +858,8 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
             strncpy(db_buf_cp, db_buf, 512);
             strncpy(db_buf_cp, buf+bytes_written, (offset+size)%512-1);
           }else{
-            //log_msg("here, bytes_written: %d, rem offset: %d\n", bytes_written, (offset+size)%512-1);
-            //log_msg("INSIDE db_buf: %s\n**************\n\n", db_buf);
-            //log_msg("BEFORE db_buf: %s\n**************\n\n", db_buf_cp);
-            //log_msg("COPYING: %s\n**************\n\n", buf+bytes_written);
-            //strncpy(db_buf_cp, db_buf, 512);
             strncpy(db_buf_cp, buf+bytes_written, (offset+size)%512-1);
-            //log_msg("why is it: %s\n", db_buf);
-            //log_msg("curr db: %s\n", db_buf_cp);
             bytes_written += (offset+size)%512;
-            //log_msg("adding: db_buf: %s\n**************\n\n\n", db_buf+(offset+size)%512-1);
             strncpy(db_buf_cp+(offset+size)%512-1, db_buf+(offset+size)%512-1, 512-(size+offset)%512-1);
           }
         }else {
@@ -846,7 +878,8 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
     }
     block_write(inode_block, inode_buf);
     //log_msg("NUM INODES REM after: %d\n",sb->num_inodes);
-    //testing
+    
+    //testing (reads)
     int y;
     for(y = 0; y<11; y++){
       if(inode_arr->i[inode_block_index].db[y] >= 0){
@@ -857,8 +890,8 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
       else break;
 
     }
+    // end test
 
-    //memset(buf, '\0', size+1);
     return bytes_written;
 }
 
@@ -936,7 +969,9 @@ int sfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
       path, buf, filler, offset, fi);
 
     char buff[512];
+    log_msg("Before memset: buff size: %d, buff contains: %s\n", sizeof(buff), buff);
     memset(buff, 0, sizeof(char)*512);
+    log_msg("AFTER: buff size: %d, buff contains: %s\n", sizeof(buff), buff);
     //block_read(6, &buff);
     //char readbuff[124];
     int i, j, h;
@@ -956,6 +991,7 @@ int sfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
         //log_msg("direntry contents: name=%s, inode_num=%d\n", pde->d[i].name, pde->d[i].inode_num);
         if( pde->d[i].name[0] == '\0' )
         {
+          //log_msg("direntry entry no contents: char: %c\n", pde->d[i].name[0]);
           continue;
         }
         char *pChar = malloc(sizeof(char)*120);
