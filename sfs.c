@@ -192,7 +192,20 @@ void *sfs_init(struct fuse_conn_info *conn)
  */
 void sfs_destroy(void *userdata)
 {
-    //log_msg("about to close disk\n");  
+    log_msg("about to close disk\n");  
+    int i, j;
+    char data_map_buf[512];
+    for(i = 1; i<=3; i++){
+      block_read(i, data_map_buf);
+      for(j = 0; j<267; j++){
+        if(data_map_buf[j] == 1){
+          char data_block_buf[512];
+          block_read(j+49, data_block_buf);
+          memset(data_block_buf, '\0', 512);
+          block_write(j+49, data_block_buf);
+        }
+      }
+    }
     disk_close();
     log_msg("\nsfs_destroy(userdata=0x%08x)\n", userdata);
 }
@@ -661,6 +674,10 @@ int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
     char db_buf[512];
     memset(db_buf, '\0', 512);
     log_msg("inside buf: %s\n", buf);
+    char cleanbuf[size];
+    memset(cleanbuf, '\0', sizeof(char)*512);
+    strncpy(buf, cleanbuf, sizeof(char)*size);
+
     for (x = first_db_block; x<last_db_block; x++){
       log_msg("LOOK HERE: x: %d\n", x);
       if (inode_arr->i[inode_block_index].db[x] < 0){
