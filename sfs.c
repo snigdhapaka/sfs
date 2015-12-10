@@ -92,12 +92,15 @@ void *sfs_init(struct fuse_conn_info *conn)
     disk_open(SFS_DATA->diskfile);
     
     //setting up the superblock struct in block 0 below
+    char cleanbuf[512];
+    memset(cleanbuf, '\0', sizeof(char)*512);
     char buf[512];
-    memset(buf, '\0', 512);
+    memset(buf, 0, sizeof(char)*512);
     superblock sb;
-    memset(sb.sfsname, '\0', sizeof(sb.sfsname));
-    char src[] = "poop";
-    strncpy(sb.sfsname, src, sizeof(src));
+    memset(sb.sfsname, '\0', sizeof(char)*5);
+    char src[] = "work";
+    strcpy(sb.sfsname, src);
+    log_msg("superblock name: %s, size", sb.sfsname, sizeof(sb.sfsname));
     sb.num_inodes = 100;
     sb.num_datablocks = 1100;
     sb.total_num_inodes = 100;
@@ -108,6 +111,7 @@ void *sfs_init(struct fuse_conn_info *conn)
     for(i = 0; i < 100; i++){
       sb.inode_map[i] = 0;
     }
+    block_write(0, cleanbuf);
     block_write(0, &sb);
   
     // CREATING AND FILLING IN THE DATA CHAR MAPS, BLOCKS 1-3, (3 total)
@@ -118,10 +122,11 @@ void *sfs_init(struct fuse_conn_info *conn)
       if(i == 3){
         data_map[366] = 'a';
       }
+      block_write(i, cleanbuf);
       block_write(i, data_map);
     }
 
-    memset(buf, 0, 512);
+    memset(buf, 0, sizeof(char)*512);
 
     // CREATING INODE ARRAY STRUCTS, BLOCKS 4-23 (20 total)
     inode_array x;
@@ -137,6 +142,7 @@ void *sfs_init(struct fuse_conn_info *conn)
             x.i[ii].db[d] = -1;
           }
       }
+      block_write(i, cleanbuf);
       block_write(i, &x);
     }
     
@@ -147,6 +153,7 @@ void *sfs_init(struct fuse_conn_info *conn)
           memset(y.d[ii].name, '\0', sizeof(y.d[ii].name));
           y.d[ii].inode_num = -1;//this is the block num for testing 
       }
+      block_write(i, cleanbuf);
       block_write(i, &y);
     }
    
@@ -227,6 +234,7 @@ int sfs_getattr(const char *path, struct stat *statbuf)
     return retstat;
   } /*if (strcmp(path, hello_path) == 0)*/ 
       char buff[512];
+      memset(buff, 0, sizeof(char)*512);
       int i, j;
       for(j = 24; j < 49; j++) {
         block_read(j, buff);
@@ -234,10 +242,10 @@ int sfs_getattr(const char *path, struct stat *statbuf)
         direntry_array *pde = (direntry_array *)buff;
         for(i = 0; i < 4; i++) {
           //log_msg("GET ATTR: direntry contents: name=%s, inode_num=%d\n", pde->d[i].name, pde->d[i].inode_num);
-          if( pde->d[i].name[0] == '\0' ){  
-            continue;
-          }
-          if(strcmp(path, pde->d[i].name)){//problem here, this should not be equal
+          //if( pde->d[i].name[0] == '\0' ){  
+           // continue;
+          //}
+          if(strcmp(path, pde->d[i].name)==0){//problem here, this should not be equal
             log_msg("GET ATTR: direntry contents: name=%s, inode_num=%d\n", pde->d[i].name, pde->d[i].inode_num);
             log_msg("I was here as a FILE");
             statbuf->st_mode = S_IFREG | 0777;
@@ -248,7 +256,8 @@ int sfs_getattr(const char *path, struct stat *statbuf)
             log_msg("\nI am a file called=>  path=\"%s\")\n", path);
             log_stat(statbuf);
             return retstat;
-          }  
+          }
+          memset(buff, 0, sizeof(char)*512);  
         }
       } 
   
@@ -326,6 +335,8 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     int datablock_num = 0;
     int done = 0;
     char data_buf[512];
+    char cleanbuf[512];
+    memset(cleanbuf, '\0', sizeof(char)*512);
     if(sb_buf->num_datablocks > 0){
       //log_msg("num free datablocks: %d\n", sb_buf->num_datablocks);
       for(data_block = 1; data_block <= 3; data_block++){
@@ -337,6 +348,7 @@ int sfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
             log_msg("FREE DATABLOCK: %d, %d\n", data_block, data_index);
             sb_buf->num_datablocks--;
             data_map[data_index] = 1;
+            block_write(data_block, cleanbuf);
             block_write(data_block, data_buf);
             done = 1;
             break;
@@ -400,6 +412,7 @@ int sfs_unlink(const char *path)
     log_msg("sfs_unlink(path=\"%s\")\n", path);
 
     char buf[512];
+    memset(buf, '\0', sizeof(char)*512);
     int i,j, found;
     for(i = 24; i <= 48; i++){
       block_read(i, buf);
@@ -635,6 +648,7 @@ int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
     int x;
     int first_db_block = offset/512;
     log_msg("LOOK HERE: first_db_block: %d\n", first_db_block);
+    log_msg("offset: %d, size: %d\n", offset, size);
     int last_db_block = (offset+size)/512;
     log_msg("LOOK HERE: last_db_block: %d\n", last_db_block);
 
@@ -675,14 +689,14 @@ int sfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
       }
     }
     log_msg("LOOK HERE: bytes_read before strcat buf with null term %d\n", bytes_read);
-    strcat(buf+bytes_read, "\0");
+    //strcat(buf+bytes_read, "\0");//might need this?
     
     //const char src[11] = "0123456789\0";
     //memcpy(buf, src, strlen(src)+1);
     //pread(fi->fh, buf, size, offset);
-    log_msg("BUF AFTER: %s, length: %d", buf, sizeof(&buf));
+    log_msg("BUF AFTER: %s, length: %d", buf, sizeof(buf));
     //bytes_read++;
-    return bytes_read * sizeof(char);
+    return bytes_read;
     //return 17*sizeof(char);
 }
 
@@ -703,6 +717,7 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
     
     //finding direntry for file
     char dir_buf[512];
+    memset(dir_buf, '\0', sizeof(char)*512);
     int i,j, inode_num;
     for(i = 24; i <= 48; i++){
       block_read(i, dir_buf);
@@ -758,6 +773,7 @@ int sfs_write(const char *path, const char *buf, size_t size, off_t offset,
         int datablock_num = 0;
         int done = 0;
         char data_buf[512];
+        memset(data_buf, '\0', sizeof(char)*512);
         if(sb->num_datablocks > 0){
           //log_msg("num free datablocks: %d\n", sb_buf->num_datablocks);
           for(data_block = 1; data_block <= 3; data_block++){
@@ -939,9 +955,9 @@ int sfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
       path, buf, filler, offset, fi);
 
     char buff[512];
-    log_msg("Before memset: buff size: %d, buff contents: %s", sizeof(buff), buff);
+    log_msg("Before memset: buff size: %d, buff contents: %s\n", sizeof(buff), buff);
     memset(buff, 0, sizeof(char)*512);
-    log_msg("AFTER: buff size: %d, buff contents: %s", sizeof(buff), buff);
+    log_msg("AFTER: buff size: %d, buff contents: %s\n", sizeof(buff), buff);
     //block_read(6, &buff);
     //char readbuff[124];
     int i, j, h;
@@ -958,10 +974,10 @@ int sfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
       direntry_array *pde = (direntry_array *)buff;
       for(i = 0; i < 4; i++)
       {
-        log_msg("direntry contents: name=%s, inode_num=%d\n", pde->d[i].name, pde->d[i].inode_num);
+        //log_msg("direntry contents: name=%s, inode_num=%d\n", pde->d[i].name, pde->d[i].inode_num);
         if( pde->d[i].name[0] == '\0' )
         {
-          log_msg("direntry entry no contents: char: %c\n", pde->d[i].name[0]);
+          //log_msg("direntry entry no contents: char: %c\n", pde->d[i].name[0]);
           continue;
         }
         char *pChar = malloc(sizeof(char)*120);
